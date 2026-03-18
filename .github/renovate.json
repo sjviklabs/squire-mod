@@ -1,0 +1,87 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "github>neoforged/actions:renovate_preset"
+  ],
+  "baseBranches": [
+    "/^1.+/"
+  ],
+  "maven": {
+    "enabled": true
+  },
+  "prHourlyLimit": 0,
+  "prConcurrentLimit": 0,
+  "addLabels": [
+    "{{{replace '-mdg' '' baseBranch}}}"
+  ],
+  "automergeSchedule": [
+    "before 6am on monday"
+  ],
+  "schedule": [
+    "at any time"
+  ],
+  "packageRules": [
+    {
+      "dependencyDashboardApproval": false,
+      "matchDepNames": [
+        "!net.neoforged.gradle.userdev"
+      ]
+    },
+    {
+      "matchDepNames": [
+        "net.neoforged:neoforge"
+      ],
+      "versioning": "regex:^(?<compatibility>\\d+\\.\\d+)\\.(?<patch>\\d+(\\-beta)?)$",
+      "automerge": true
+    },
+    {
+      "matchDepNames": [
+        "net.neoforged:neoforge"
+      ],
+      "matchManagers": [
+        "gradle"
+      ],
+      "enabled": false
+    },
+    {
+      "automerge": true,
+      "matchDepNames": [
+        "/org\\.parchmentmc\\.data:parchment-[\\d\\.]+/"
+      ]
+    },
+    {
+      "matchDatasources": [
+        "gradle-version"
+      ],
+      "matchUpdateTypes": [
+        "patch"
+      ],
+      "automerge": true
+    }
+  ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "fileMatch": [
+        "gradle\\.properties$"
+      ],
+      "depNameTemplate": "net.neoforged:neoforge",
+      "matchStrings": [
+        "neo_version=(?<currentValue>[\\d\\.\\-a-z]+)"
+      ],
+      "datasourceTemplate": "maven"
+    },
+    {
+      "customType": "regex",
+      "fileMatch": [
+        "gradle\\.properties$"
+      ],
+      "depNameTemplate": "org.parchmentmc.data:parchment-{{{mcVersion}}}",
+      "matchStrings": [
+        "neogradle\\.subsystems\\.parchment\\.minecraftVersion=(?<mcVersion>[\\d\\.]+)\\s+neogradle\\.subsystems\\.parchment\\.mappingsVersion=(?<currentValue>[\\d\\.]+)",
+        "parchment_minecraft_version=(?<mcVersion>[\\d\\.]+)\\s+parchment_mappings_version=(?<currentValue>[\\d\\.]+)"
+      ],
+      "datasourceTemplate": "maven"
+    }
+  ]
+}
