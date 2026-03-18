@@ -6,6 +6,7 @@ import com.sjviklabs.squire.ai.SquirePickupGoal;
 import com.sjviklabs.squire.inventory.SquireInventory;
 import com.sjviklabs.squire.inventory.SquireMenu;
 import com.sjviklabs.squire.init.ModMenuTypes;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
@@ -105,7 +106,7 @@ public class SquireEntity extends PathfinderMob {
     @Override
     public void addAdditionalSaveData(CompoundTag tag) {
         super.addAdditionalSaveData(tag);
-        tag.put("SquireInventory", this.inventory.toTag());
+        tag.put("SquireInventory", this.inventory.toTag(this.registryAccess()));
         if (this.ownerUUID != null) {
             tag.putUUID("OwnerUUID", this.ownerUUID);
         }
@@ -115,7 +116,7 @@ public class SquireEntity extends PathfinderMob {
     public void readAdditionalSaveData(CompoundTag tag) {
         super.readAdditionalSaveData(tag);
         if (tag.contains("SquireInventory")) {
-            this.inventory.fromTag(tag.getList("SquireInventory", 10));
+            this.inventory.fromTag(tag.getList("SquireInventory", 10), this.registryAccess());
         }
         if (tag.hasUUID("OwnerUUID")) {
             this.ownerUUID = tag.getUUID("OwnerUUID");

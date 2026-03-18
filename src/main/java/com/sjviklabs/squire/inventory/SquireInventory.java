@@ -1,6 +1,7 @@
 package com.sjviklabs.squire.inventory;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.world.Container;
@@ -128,25 +129,25 @@ public class SquireInventory implements Container {
         return remaining;
     }
 
-    public ListTag toTag() {
+    public ListTag toTag(HolderLookup.Provider registries) {
         ListTag list = new ListTag();
         for (int i = 0; i < this.size; i++) {
             if (!this.items[i].isEmpty()) {
                 CompoundTag itemTag = new CompoundTag();
                 itemTag.putByte("Slot", (byte) i);
-                list.add(this.items[i].save(itemTag));
+                list.add(this.items[i].save(registries, itemTag));
             }
         }
         return list;
     }
 
-    public void fromTag(ListTag list) {
+    public void fromTag(ListTag list, HolderLookup.Provider registries) {
         this.clearContent();
         for (int i = 0; i < list.size(); i++) {
             CompoundTag itemTag = list.getCompound(i);
             int slot = itemTag.getByte("Slot") & 255;
             if (slot < this.size) {
-                this.items[slot] = ItemStack.parse(itemTag).orElse(ItemStack.EMPTY);
+                this.items[slot] = ItemStack.parse(registries, itemTag).orElse(ItemStack.EMPTY);
             }
         }
     }
