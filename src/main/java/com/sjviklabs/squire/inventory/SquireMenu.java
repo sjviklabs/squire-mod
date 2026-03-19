@@ -15,17 +15,17 @@ import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 
 /**
- * Squire inventory menu with equipment slots (4 armor + offhand) and 27-slot general inventory.
+ * Squire inventory menu with equipment slots (4 armor + offhand + mainhand) and 27-slot general inventory.
  *
- * Layout (196x184 GUI):
- *   Left column (x=7): helmet, chestplate, leggings, boots (y=7,25,43,61), offhand (y=79)
+ * Layout (196x202 GUI):
+ *   Left column (x=7): helmet, chestplate, leggings, boots (y=7,25,43,61), offhand (y=79), mainhand (y=97)
  *   Right area (x=35): 3 rows x 9 cols general inventory (y=7)
- *   Bottom: player inventory (y=102) + hotbar (y=160)
+ *   Bottom: player inventory (y=122) + hotbar (y=180)
  */
 public class SquireMenu extends AbstractContainerMenu {
 
     private static final int SQUIRE_INV_SIZE = 27;
-    private static final int EQUIP_SLOT_COUNT = 5; // 4 armor + offhand
+    private static final int EQUIP_SLOT_COUNT = 6; // 4 armor + offhand + mainhand
     private static final int TOTAL_SQUIRE_SLOTS = SQUIRE_INV_SIZE + EQUIP_SLOT_COUNT;
 
     private final Container squireInventory;
@@ -80,23 +80,32 @@ public class SquireMenu extends AbstractContainerMenu {
             this.addSlot(new Slot(this.equipmentContainer, 4, 7, 79));
         }
 
-        // --- Squire general inventory (3 rows x 9, menu indices 5-31) ---
+        // Mainhand/weapon slot (menu index 5) — below offhand
+        if (squire != null) {
+            this.addSlot(new SquireEquipmentSlot(
+                    this.equipmentContainer, squire, EquipmentSlot.MAINHAND,
+                    5, 7, 97, null));
+        } else {
+            this.addSlot(new Slot(this.equipmentContainer, 5, 7, 97));
+        }
+
+        // --- Squire general inventory (3 rows x 9, menu indices 6-32) ---
         for (int row = 0; row < 3; row++) {
             for (int col = 0; col < 9; col++) {
                 this.addSlot(new Slot(squireInventory, col + row * 9, 35 + col * 18, 7 + row * 18));
             }
         }
 
-        // --- Player inventory (3 rows x 9, menu indices 32-58) ---
+        // --- Player inventory (3 rows x 9, menu indices 33-59) ---
         for (int row = 0; row < 3; row++) {
             for (int col = 0; col < 9; col++) {
-                this.addSlot(new Slot(playerInventory, col + row * 9 + 9, 8 + col * 18, 102 + row * 18));
+                this.addSlot(new Slot(playerInventory, col + row * 9 + 9, 8 + col * 18, 122 + row * 18));
             }
         }
 
-        // --- Player hotbar (menu indices 59-67) ---
+        // --- Player hotbar (menu indices 60-68) ---
         for (int col = 0; col < 9; col++) {
-            this.addSlot(new Slot(playerInventory, col, 8 + col * 18, 160));
+            this.addSlot(new Slot(playerInventory, col, 8 + col * 18, 180));
         }
     }
 

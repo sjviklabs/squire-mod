@@ -7,6 +7,7 @@ import com.sjviklabs.squire.ai.SquirePickupGoal;
 import com.sjviklabs.squire.ai.SquireSitGoal;
 import com.sjviklabs.squire.config.SquireConfig;
 import com.sjviklabs.squire.init.ModItems;
+import com.sjviklabs.squire.util.SquireEquipmentHelper;
 import com.sjviklabs.squire.inventory.SquireEquipmentContainer;
 import com.sjviklabs.squire.inventory.SquireInventory;
 import com.sjviklabs.squire.inventory.SquireMenu;
@@ -73,12 +74,15 @@ public class SquireEntity extends TamableAnimal {
     // ================================================================
 
     public static AttributeSupplier.Builder createAttributes() {
+        // Use hardcoded defaults here — config isn't loaded during entity registration.
+        // Config values are applied at runtime via attribute modifiers if needed.
         return TamableAnimal.createMobAttributes()
-                .add(Attributes.MAX_HEALTH, SquireConfig.baseHealth.getAsDouble())
+                .add(Attributes.MAX_HEALTH, 20.0D)
                 .add(Attributes.MOVEMENT_SPEED, 0.3D)
-                .add(Attributes.ATTACK_DAMAGE, 6.0D)
+                .add(Attributes.ATTACK_DAMAGE, 1.0D)
                 .add(Attributes.FOLLOW_RANGE, 32.0D)
-                .add(Attributes.ARMOR, 4.0D);
+                .add(Attributes.ARMOR, 0.0D)
+                .add(Attributes.ATTACK_SPEED, 4.0D);
     }
 
     // ================================================================
@@ -260,6 +264,23 @@ public class SquireEntity extends TamableAnimal {
             return false;
         }
         return super.hurt(source, amount);
+    }
+
+    // ================================================================
+    // Tick — periodic equipment check
+    // ================================================================
+
+    private int equipCheckTimer = 0;
+
+    @Override
+    public void aiStep() {
+        super.aiStep();
+        if (!this.level().isClientSide) {
+            if (++this.equipCheckTimer >= SquireConfig.equipCheckInterval.get()) {
+                this.equipCheckTimer = 0;
+                SquireEquipmentHelper.runFullEquipCheck(this);
+            }
+        }
     }
 
     // ================================================================

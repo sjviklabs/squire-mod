@@ -7,8 +7,8 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 
 /**
- * Thin wrapper that exposes a LivingEntity's 4 armor slots + offhand as a Container.
- * Slot mapping: 0=head, 1=chest, 2=legs, 3=feet, 4=offhand.
+ * Thin wrapper that exposes a LivingEntity's equipment slots as a Container.
+ * Slot mapping: 0=head, 1=chest, 2=legs, 3=feet, 4=offhand, 5=mainhand.
  * Used by SquireMenu so equipment slots can be added like any other Container slot.
  */
 public class SquireEquipmentContainer implements Container {
@@ -18,7 +18,8 @@ public class SquireEquipmentContainer implements Container {
             EquipmentSlot.CHEST,
             EquipmentSlot.LEGS,
             EquipmentSlot.FEET,
-            EquipmentSlot.OFFHAND
+            EquipmentSlot.OFFHAND,
+            EquipmentSlot.MAINHAND
     };
 
     private final LivingEntity entity;

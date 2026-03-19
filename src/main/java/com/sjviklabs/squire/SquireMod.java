@@ -13,7 +13,6 @@ import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.config.ModConfig;
-import net.neoforged.neoforge.common.NeoForge;
 
 @Mod(SquireMod.MODID)
 public class SquireMod {
@@ -33,7 +32,5 @@ public class SquireMod {
 
         // Register network payloads
         modEventBus.addListener(SquireModePayload::register);
-
-        NeoForge.EVENT_BUS.register(this);
     }
 }

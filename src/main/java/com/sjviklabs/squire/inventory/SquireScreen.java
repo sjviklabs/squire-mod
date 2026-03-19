@@ -10,7 +10,7 @@ import net.minecraft.world.entity.player.Inventory;
  * Rendered programmatically — no external texture file needed.
  *
  * Layout:
- *   Left column: 4 armor slots + offhand
+ *   Left column: 4 armor slots + offhand + mainhand
  *   Right: 3x9 general inventory
  *   Bottom: player inventory + hotbar
  */
@@ -27,8 +27,8 @@ public class SquireScreen extends AbstractContainerScreen<SquireMenu> {
     public SquireScreen(SquireMenu menu, Inventory playerInventory, Component title) {
         super(menu, playerInventory, title);
         this.imageWidth = 196;
-        this.imageHeight = 184;
-        this.inventoryLabelY = 91;
+        this.imageHeight = 202;
+        this.inventoryLabelY = 111;
         this.titleLabelX = 35;
     }
 
@@ -47,16 +47,17 @@ public class SquireScreen extends AbstractContainerScreen<SquireMenu> {
         guiGraphics.fill(x + this.imageWidth - 1, y, x + this.imageWidth, y + this.imageHeight, BORDER_COLOR);
 
         // Equipment column separator
-        guiGraphics.fill(x + 28, y + 4, x + 29, y + 98, SEPARATOR_COLOR);
+        guiGraphics.fill(x + 28, y + 4, x + 29, y + 116, SEPARATOR_COLOR);
 
         // Section separator (squire inv / player inv)
-        guiGraphics.fill(x + 4, y + 96, x + this.imageWidth - 4, y + 97, SEPARATOR_COLOR);
+        guiGraphics.fill(x + 4, y + 116, x + this.imageWidth - 4, y + 117, SEPARATOR_COLOR);
 
-        // Equipment slots (left column)
+        // Equipment slots (left column): 4 armor + offhand + mainhand
         for (int i = 0; i < 4; i++) {
             drawSlotBg(guiGraphics, x + 6, y + 6 + i * 18);
         }
         drawSlotBg(guiGraphics, x + 6, y + 78); // offhand
+        drawSlotBg(guiGraphics, x + 6, y + 96); // mainhand
 
         // Squire general inventory (3x9)
         for (int row = 0; row < 3; row++) {
@@ -68,13 +69,13 @@ public class SquireScreen extends AbstractContainerScreen<SquireMenu> {
         // Player inventory (3x9)
         for (int row = 0; row < 3; row++) {
             for (int col = 0; col < 9; col++) {
-                drawSlotBg(guiGraphics, x + 7 + col * 18, y + 101 + row * 18);
+                drawSlotBg(guiGraphics, x + 7 + col * 18, y + 121 + row * 18);
             }
         }
 
         // Player hotbar
         for (int col = 0; col < 9; col++) {
-            drawSlotBg(guiGraphics, x + 7 + col * 18, y + 159);
+            drawSlotBg(guiGraphics, x + 7 + col * 18, y + 179);
         }
     }
 
