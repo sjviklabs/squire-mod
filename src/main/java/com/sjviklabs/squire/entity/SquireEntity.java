@@ -7,6 +7,7 @@ import com.sjviklabs.squire.ai.SquirePickupGoal;
 import com.sjviklabs.squire.ai.SquireSitGoal;
 import com.sjviklabs.squire.config.SquireConfig;
 import com.sjviklabs.squire.init.ModItems;
+import com.sjviklabs.squire.inventory.SquireEquipmentContainer;
 import com.sjviklabs.squire.inventory.SquireInventory;
 import com.sjviklabs.squire.inventory.SquireMenu;
 import net.minecraft.nbt.CompoundTag;
@@ -180,9 +181,11 @@ public class SquireEntity extends TamableAnimal {
             } else {
                 // Right-click: open inventory
                 if (player instanceof ServerPlayer serverPlayer) {
+                    SquireEquipmentContainer equipContainer = new SquireEquipmentContainer(this);
                     serverPlayer.openMenu(new SimpleMenuProvider(
                             (containerId, playerInventory, p) ->
-                                    new SquireMenu(containerId, playerInventory, this.inventory, this.getId()),
+                                    new SquireMenu(containerId, playerInventory, this.inventory,
+                                            equipContainer, this, this.getId()),
                             Component.translatable("container.squire.inventory")
                     ), buf -> buf.writeVarInt(this.getId()));
                 }
@@ -234,6 +237,14 @@ public class SquireEntity extends TamableAnimal {
 
             // Drop a squire badge so the player can resummon
             this.spawnAtLocation(new ItemStack(ModItems.SQUIRE_BADGE.get()));
+
+            // Notify owner with death coordinates
+            if (this.getOwner() instanceof ServerPlayer owner) {
+                int x = this.blockPosition().getX();
+                int y = this.blockPosition().getY();
+                int z = this.blockPosition().getZ();
+                owner.sendSystemMessage(Component.translatable("squire.death.message", x, y, z));
+            }
         }
         super.die(source);
     }

@@ -7,5 +7,6 @@
   "squire.mode.follow": "Squire: Follow",
   "squire.badge.limit": "You already have the maximum number of squires (%s)",
   "squire.badge.no_squire": "You don't have an active squire",
-  "squire.badge.recall": "Recalling your squire..."
+  "squire.badge.recall": "Recalling your squire...",
+  "squire.death.message": "Your squire has fallen at [%s, %s, %s]!"
 }
