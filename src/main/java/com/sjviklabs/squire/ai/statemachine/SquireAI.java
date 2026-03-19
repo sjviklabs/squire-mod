@@ -3,6 +3,7 @@ package com.sjviklabs.squire.ai.statemachine;
 import com.sjviklabs.squire.ai.handler.CombatHandler;
 import com.sjviklabs.squire.ai.handler.FollowHandler;
 import com.sjviklabs.squire.ai.handler.ItemHandler;
+import com.sjviklabs.squire.ai.handler.MiningHandler;
 import com.sjviklabs.squire.ai.handler.SurvivalHandler;
 import com.sjviklabs.squire.entity.SquireEntity;
 import net.minecraft.world.entity.player.Player;
@@ -28,6 +29,7 @@ public class SquireAI {
     private final SurvivalHandler survival;
     private final FollowHandler follow;
     private final ItemHandler items;
+    private final MiningHandler mining;
 
     public SquireAI(SquireEntity squire) {
         this.squire = squire;
@@ -36,6 +38,7 @@ public class SquireAI {
         this.survival = new SurvivalHandler(squire);
         this.follow = new FollowHandler(squire);
         this.items = new ItemHandler(squire);
+        this.mining = new MiningHandler(squire);
         registerTransitions();
     }
 
@@ -47,6 +50,7 @@ public class SquireAI {
     public SurvivalHandler getSurvival() { return survival; }
     public FollowHandler getFollow() { return follow; }
     public ItemHandler getItems() { return items; }
+    public MiningHandler getMining() { return mining; }
 
     public void tick() {
         machine.tick(squire);
@@ -61,6 +65,7 @@ public class SquireAI {
         registerCombatTransitions();
         registerEatingTransitions();
         registerFollowTransitions();
+        registerMiningTransitions();
         registerPickupTransitions();
         registerIdleTransitions();
     }
@@ -182,6 +187,47 @@ public class SquireAI {
                 () -> !follow.shouldStop(),
                 follow::tick,
                 1, 30
+        ));
+    }
+
+    // ---- Mining (priority 35) ----
+    // Mining is command-driven: setTarget() on MiningHandler, then state machine takes over.
+
+    private void registerMiningTransitions() {
+        // MINING_APPROACH: walk toward target block
+        machine.addTransition(new AITransition(
+                SquireAIState.MINING_APPROACH,
+                () -> !mining.hasTarget(),
+                s -> {
+                    mining.clearTarget();
+                    return SquireAIState.IDLE;
+                },
+                1, 34
+        ));
+
+        machine.addTransition(new AITransition(
+                SquireAIState.MINING_APPROACH,
+                mining::hasTarget,
+                mining::tickApproach,
+                1, 35
+        ));
+
+        // MINING_BREAK: break the block
+        machine.addTransition(new AITransition(
+                SquireAIState.MINING_BREAK,
+                () -> !mining.hasTarget(),
+                s -> {
+                    mining.clearTarget();
+                    return SquireAIState.IDLE;
+                },
+                1, 34
+        ));
+
+        machine.addTransition(new AITransition(
+                SquireAIState.MINING_BREAK,
+                mining::hasTarget,
+                mining::tickBreak,
+                1, 35
         ));
     }
 

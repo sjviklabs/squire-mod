@@ -32,6 +32,13 @@ public final class SquireConfig {
     public static final ModConfigSpec.DoubleValue baseHealth;
     public static final ModConfigSpec.DoubleValue naturalRegenRate;
 
+    // --- Mining ---
+    public static final ModConfigSpec.DoubleValue mineReach;
+    public static final ModConfigSpec.DoubleValue breakSpeedMultiplier;
+
+    // --- Placing ---
+    public static final ModConfigSpec.DoubleValue placeReach;
+
     // --- Tick intervals ---
     public static final ModConfigSpec.IntValue itemScanInterval;
     public static final ModConfigSpec.IntValue equipCheckInterval;
@@ -88,6 +95,23 @@ public final class SquireConfig {
         naturalRegenRate = builder
                 .comment("HP per second regenerated when food saturation is above 90%.")
                 .defineInRange("naturalRegenRate", 0.5, 0.0, 5.0);
+        builder.pop();
+
+        // ---- Mining ----
+        builder.push("mining");
+        mineReach = builder
+                .comment("Maximum distance (blocks) at which the squire can mine a block.")
+                .defineInRange("mineReach", 4.0, 2.0, 8.0);
+        breakSpeedMultiplier = builder
+                .comment("Multiplier for block break speed. 1.0 = same as player.")
+                .defineInRange("breakSpeedMultiplier", 1.0, 0.1, 3.0);
+        builder.pop();
+
+        // ---- Placing ----
+        builder.push("placing");
+        placeReach = builder
+                .comment("Maximum distance (blocks) at which the squire can place a block.")
+                .defineInRange("placeReach", 4.0, 2.0, 8.0);
         builder.pop();
 
         // ---- Tick intervals ----

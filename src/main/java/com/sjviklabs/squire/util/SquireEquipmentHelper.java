@@ -13,6 +13,7 @@ import net.minecraft.world.item.AxeItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.ShieldItem;
 import net.minecraft.world.item.SwordItem;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.item.component.ItemAttributeModifiers;
 import net.minecraft.world.item.enchantment.Enchantment;
 import net.minecraft.world.item.enchantment.ItemEnchantments;
@@ -131,6 +132,36 @@ public final class SquireEquipmentHelper {
                     }
                 }
             }
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // Tool selection for mining
+    // ------------------------------------------------------------------
+
+    /**
+     * Scan inventory for the tool with the highest destroy speed against the given
+     * block state. If a better tool is found, swap it into mainhand. If no tool
+     * is effective, leaves current mainhand unchanged.
+     */
+    public static void selectBestTool(SquireEntity squire, BlockState blockState) {
+        SquireInventory inv = squire.getSquireInventory();
+        ItemStack currentMainhand = squire.getItemBySlot(EquipmentSlot.MAINHAND);
+        float bestSpeed = currentMainhand.getDestroySpeed(blockState);
+        int bestIdx = -1;
+
+        for (int i = 0; i < inv.getContainerSize(); i++) {
+            ItemStack candidate = inv.getItem(i);
+            if (candidate.isEmpty()) continue;
+            float speed = candidate.getDestroySpeed(blockState);
+            if (speed > bestSpeed) {
+                bestSpeed = speed;
+                bestIdx = i;
+            }
+        }
+
+        if (bestIdx >= 0) {
+            swapEquipmentFromSlot(squire, EquipmentSlot.MAINHAND, inv, bestIdx);
         }
     }
 
