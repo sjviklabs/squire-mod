@@ -74,6 +74,10 @@ public class TickRateStateMachine {
 
         // Transition if a match was found
         if (nextState != null && nextState != currentState) {
+            var log = squire.getActivityLog();
+            if (log != null) {
+                log.log("STATE", currentState.name() + " → " + nextState.name());
+            }
             currentState = nextState;
         }
     }

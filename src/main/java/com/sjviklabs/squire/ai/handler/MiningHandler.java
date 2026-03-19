@@ -163,10 +163,17 @@ public class MiningHandler {
                     SoundSource.BLOCKS, 1.0F, soundType.getPitch());
 
             // Destroy block with drops
+            String blockName = state.getBlock().getName().getString();
+            String posStr = targetPos.toShortString();
             serverLevel.destroyBlock(targetPos, true, s);
 
             // Award mining XP
             s.getProgression().addMineXP();
+
+            var log = s.getActivityLog();
+            if (log != null) {
+                log.log("MINE", "Broke " + blockName + " at " + posStr);
+            }
 
             // Clear crack overlay
             serverLevel.destroyBlockProgress(s.getId(), targetPos, -1);

@@ -81,6 +81,11 @@ public class CombatHandler {
             recalculateAttackCooldown();
             if (hitLanded && !target.isAlive()) {
                 s.getProgression().addKillXP();
+                var log = s.getActivityLog();
+                if (log != null) {
+                    log.log("COMBAT", "Killed " + target.getType().toShortString()
+                            + " at " + target.blockPosition().toShortString());
+                }
             }
         }
 

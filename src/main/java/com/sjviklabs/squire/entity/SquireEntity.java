@@ -1,5 +1,6 @@
 package com.sjviklabs.squire.entity;
 
+import com.sjviklabs.squire.ai.SquireActivityLog;
 import com.sjviklabs.squire.ai.handler.ProgressionHandler;
 import com.sjviklabs.squire.ai.statemachine.SquireAI;
 import com.sjviklabs.squire.config.SquireConfig;
@@ -66,6 +67,7 @@ public class SquireEntity extends TamableAnimal {
 
     // ---- AI ----
     private SquireAI squireAI;
+    private SquireActivityLog activityLog;
 
     // ---- Constructor ----
     public SquireEntity(EntityType<? extends SquireEntity> type, Level level) {
@@ -302,6 +304,7 @@ public class SquireEntity extends TamableAnimal {
             // Lazy init — can't create in constructor because registerGoals()
             // runs during super() before our fields are initialized
             if (this.squireAI == null) {
+                this.activityLog = new SquireActivityLog(this);
                 this.squireAI = new SquireAI(this);
             }
             this.squireAI.tick();
@@ -317,6 +320,12 @@ public class SquireEntity extends TamableAnimal {
     @Nullable
     public SquireAI getSquireAI() {
         return this.squireAI;
+    }
+
+    /** Activity log for debugging. Null before first server-side aiStep(). */
+    @Nullable
+    public SquireActivityLog getActivityLog() {
+        return this.activityLog;
     }
 
     // ================================================================

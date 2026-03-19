@@ -104,6 +104,11 @@ public class ItemHandler {
 
         // Pass the pre-insertion copy — addItem() consumes the stack in-place
         SquireEquipmentHelper.tryAutoEquip(s, original);
+
+        var log = s.getActivityLog();
+        if (log != null) {
+            log.log("ITEM", "Picked up " + original.getCount() + "x " + original.getHoverName().getString());
+        }
         targetItem = null;
     }
 }

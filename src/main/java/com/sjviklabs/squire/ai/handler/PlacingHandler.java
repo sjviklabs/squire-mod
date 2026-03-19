@@ -137,6 +137,11 @@ public class PlacingHandler {
         // Consume one item
         inv.removeItem(inventorySlot, 1);
 
+        var log = s.getActivityLog();
+        if (log != null) {
+            log.log("PLACE", "Placed " + block.getName().getString() + " at " + targetPos.toShortString());
+        }
+
         clearTarget();
         return SquireAIState.IDLE;
     }

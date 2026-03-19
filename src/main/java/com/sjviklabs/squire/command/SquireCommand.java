@@ -2,6 +2,7 @@ package com.sjviklabs.squire.command;
 
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
+import com.sjviklabs.squire.ai.SquireActivityLog;
 import com.sjviklabs.squire.ai.statemachine.SquireAI;
 import com.sjviklabs.squire.ai.statemachine.SquireAIState;
 import com.sjviklabs.squire.config.SquireConfig;
@@ -88,6 +89,13 @@ public class SquireCommand {
                         .requires(src -> src.hasPermission(2))
                         .then(Commands.argument("amount", IntegerArgumentType.integer(1, 10000))
                                 .executes(ctx -> grantXP(ctx.getSource(), IntegerArgumentType.getInteger(ctx, "amount")))
+                        )
+                )
+                .then(Commands.literal("log")
+                        .requires(src -> src.hasPermission(2))
+                        .executes(ctx -> showLog(ctx.getSource(), 20))
+                        .then(Commands.argument("count", IntegerArgumentType.integer(1, 100))
+                                .executes(ctx -> showLog(ctx.getSource(), IntegerArgumentType.getInteger(ctx, "count")))
                         )
                 )
         );
@@ -268,6 +276,33 @@ public class SquireCommand {
                 "Granted " + amount + " XP to squire. Now Lv." +
                 squire.getSquireLevel() + " (" + squire.getProgression().getTotalXP() + " XP)"), false);
         return 1;
+    }
+
+    // ------------------------------------------------------------------
+    // /squire log [count]
+    // ------------------------------------------------------------------
+
+    private static int showLog(CommandSourceStack source, int count) {
+        if (!(source.getEntity() instanceof ServerPlayer player)) {
+            source.sendFailure(Component.literal("Must be run by a player."));
+            return 0;
+        }
+        SquireEntity squire = findOwnedSquire(source, player);
+        if (squire == null) {
+            source.sendFailure(Component.literal("You have no active squire."));
+            return 0;
+        }
+        SquireActivityLog log = squire.getActivityLog();
+        if (log == null || log.size() == 0) {
+            source.sendSuccess(() -> Component.literal("No activity logged yet."), false);
+            return 0;
+        }
+        List<String> entries = log.getRecent(count);
+        source.sendSuccess(() -> Component.literal("--- Squire Activity Log (last " + entries.size() + ") ---"), false);
+        for (String entry : entries) {
+            source.sendSuccess(() -> Component.literal(entry), false);
+        }
+        return entries.size();
     }
 
     // ------------------------------------------------------------------

@@ -14,6 +14,7 @@ public final class SquireConfig {
 
     // --- Debug / testing ---
     public static final ModConfigSpec.BooleanValue godMode;
+    public static final ModConfigSpec.BooleanValue activityLogging;
 
     // --- Per-player limits ---
     public static final ModConfigSpec.IntValue maxSquiresPerPlayer;
@@ -64,6 +65,9 @@ public final class SquireConfig {
         godMode = builder
                 .comment("When true, squires cannot die — health is clamped at 1 HP minimum. For testing.")
                 .define("godMode", false);
+        activityLogging = builder
+                .comment("When true, squire AI logs state transitions and actions to logs/latest.log. Use /squire log to view in-game.")
+                .define("activityLogging", true);
         builder.pop();
 
         // ---- Per-player limits ----

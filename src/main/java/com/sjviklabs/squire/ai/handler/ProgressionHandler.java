@@ -77,6 +77,12 @@ public class ProgressionHandler {
         squire.setSquireLevel(currentLevel);
         // Heal to new max on level up
         squire.setHealth(squire.getMaxHealth());
+
+        var log = squire.getActivityLog();
+        if (log != null) {
+            log.log("LEVEL", "Leveled up to Lv." + currentLevel
+                    + " (" + totalXP + " XP, max HP " + String.format("%.0f", squire.getMaxHealth()) + ")");
+        }
     }
 
     /** Apply (or update) attribute modifiers based on current level. */

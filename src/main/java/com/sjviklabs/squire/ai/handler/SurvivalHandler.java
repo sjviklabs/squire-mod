@@ -102,8 +102,14 @@ public class SurvivalHandler {
         SquireInventory inv = s.getSquireInventory();
         ItemStack stack = inv.getItem(foodSlot);
         if (!stack.isEmpty()) {
+            String foodName = stack.getHoverName().getString();
             inv.removeItem(foodSlot, 1);
             s.heal((float) nutritionValue);
+            var log = s.getActivityLog();
+            if (log != null) {
+                log.log("EAT", "Ate " + foodName + " (+" + nutritionValue + " HP)"
+                        + " HP now " + String.format("%.1f/%.1f", s.getHealth(), s.getMaxHealth()));
+            }
         }
         foodSlot = -1;
     }
