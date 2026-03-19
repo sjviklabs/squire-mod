@@ -88,8 +88,6 @@ public class ProgressionHandler {
         setModifier(Attributes.MAX_HEALTH, LEVEL_HEALTH_ID, healthBonus);
         setModifier(Attributes.ATTACK_DAMAGE, LEVEL_DAMAGE_ID, damageBonus);
         setModifier(Attributes.MOVEMENT_SPEED, LEVEL_SPEED_ID, speedBonus);
-
-        squire.setSquireLevel(currentLevel);
     }
 
     private void setModifier(Holder<net.minecraft.world.entity.ai.attributes.Attribute> attribute,
@@ -111,6 +109,7 @@ public class ProgressionHandler {
     public void save(CompoundTag tag) {
         CompoundTag prog = new CompoundTag();
         prog.putInt("TotalXP", totalXP);
+        prog.putInt("Level", currentLevel);
         tag.put("SquireProgression", prog);
     }
 
@@ -118,7 +117,14 @@ public class ProgressionHandler {
         if (tag.contains("SquireProgression")) {
             CompoundTag prog = tag.getCompound("SquireProgression");
             this.totalXP = prog.getInt("TotalXP");
-            recalculateLevel();
+            int savedLevel = prog.getInt("Level");
+            // Recompute from XP+config, then cap at saved level so config
+            // tightening is respected but loosening doesn't inflate beyond earned
+            int computed = Math.min(totalXP / Math.max(1, SquireConfig.xpPerLevel.get()),
+                    SquireConfig.maxLevel.get());
+            this.currentLevel = Math.min(savedLevel, computed);
+            applyModifiers();
+            squire.setSquireLevel(currentLevel);
         }
     }
 }

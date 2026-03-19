@@ -77,9 +77,9 @@ public class CombatHandler {
 
         if (distSq <= reach && ticksUntilNextAttack <= 0) {
             s.swing(InteractionHand.MAIN_HAND);
-            s.doHurtTarget(target);
+            boolean hitLanded = s.doHurtTarget(target);
             recalculateAttackCooldown();
-            if (!target.isAlive()) {
+            if (hitLanded && !target.isAlive()) {
                 s.getProgression().addKillXP();
             }
         }
