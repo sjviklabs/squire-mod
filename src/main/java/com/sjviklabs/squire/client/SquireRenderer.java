@@ -8,7 +8,7 @@ import net.minecraft.client.model.HumanoidModel;
 import net.minecraft.client.model.PlayerModel;
 import net.minecraft.client.model.geom.ModelLayers;
 import net.minecraft.client.renderer.MultiBufferSource;
-import net.minecraft.client.renderer.RenderType;
+import net.minecraft.client.gui.Font;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
 import net.minecraft.client.renderer.entity.HumanoidMobRenderer;
 import net.minecraft.client.renderer.entity.layers.HumanoidArmorLayer;
@@ -56,11 +56,11 @@ public class SquireRenderer extends HumanoidMobRenderer<SquireEntity, PlayerMode
     protected void renderNameTag(SquireEntity entity, Component displayName, PoseStack poseStack,
                                   MultiBufferSource bufferSource, int packedLight, float partialTick) {
         super.renderNameTag(entity, displayName, poseStack, bufferSource, packedLight, partialTick);
-        renderHealthBar(entity, poseStack, bufferSource, partialTick);
+        renderHealthBar(entity, poseStack, bufferSource, packedLight, partialTick);
     }
 
     private void renderHealthBar(SquireEntity entity, PoseStack poseStack,
-                                  MultiBufferSource bufferSource, float partialTick) {
+                                  MultiBufferSource bufferSource, int packedLight, float partialTick) {
         Vec3 namePos = entity.getAttachments().getNullable(EntityAttachment.NAME_TAG, 0, entity.getViewYRot(partialTick));
         if (namePos == null) return;
 
@@ -79,8 +79,7 @@ public class SquireRenderer extends HumanoidMobRenderer<SquireEntity, PlayerMode
         float barHeight = 3.0F;
         float filledWidth = barHalfWidth * 2.0F * healthPct;
 
-        // TODO: Replace debugQuads() with custom RenderType in Phase 2 for better batching
-        VertexConsumer consumer = bufferSource.getBuffer(RenderType.debugQuads());
+        VertexConsumer consumer = bufferSource.getBuffer(SquireRenderTypes.HEALTH_BAR);
 
         // Background (dark gray)
         drawQuad(consumer, matrix, -barHalfWidth, 0, barHalfWidth, barHeight, 0.2F, 0.2F, 0.2F, 0.6F);
@@ -95,6 +94,16 @@ public class SquireRenderer extends HumanoidMobRenderer<SquireEntity, PlayerMode
             g = healthPct * 2.0F;
         }
         drawQuad(consumer, matrix, -barHalfWidth, 0, -barHalfWidth + filledWidth, barHeight, r, g, 0.0F, 0.8F);
+
+        // Level text below health bar
+        int level = entity.getSquireLevel();
+        if (level > 0) {
+            Component levelText = Component.literal("Lv. " + level);
+            Font font = this.getFont();
+            float textX = -font.width(levelText) / 2.0F;
+            font.drawInBatch(levelText, textX, barHeight + 2.0F, 0xFFFFFFFF,
+                    false, matrix, bufferSource, Font.DisplayMode.NORMAL, 0, packedLight);
+        }
 
         poseStack.popPose();
     }
