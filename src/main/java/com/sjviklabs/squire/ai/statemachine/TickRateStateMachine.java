@@ -43,6 +43,14 @@ public class TickRateStateMachine {
     }
 
     /**
+     * Force the machine into a specific state immediately.
+     * Used by debug commands (/squire mine, /squire place) to override normal transitions.
+     */
+    public void forceState(SquireAIState state) {
+        this.currentState = state;
+    }
+
+    /**
      * Called once per server tick from SquireEntity.aiStep().
      * Decrements all countdowns, evaluates eligible transitions, fires the first match.
      */
