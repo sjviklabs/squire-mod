@@ -25,8 +25,9 @@ import org.joml.Matrix4f;
  */
 public class SquireRenderer extends HumanoidMobRenderer<SquireEntity, PlayerModel<SquireEntity>> {
 
+    // Use vanilla Steve skin — custom skin can be swapped back later
     private static final ResourceLocation TEXTURE =
-            ResourceLocation.fromNamespaceAndPath(SquireMod.MODID, "textures/entity/squire.png");
+            ResourceLocation.withDefaultNamespace("textures/entity/player/wide/steve.png");
 
     public SquireRenderer(EntityRendererProvider.Context context) {
         super(context, new PlayerModel<>(context.bakeLayer(ModelLayers.PLAYER), false), 0.5F);

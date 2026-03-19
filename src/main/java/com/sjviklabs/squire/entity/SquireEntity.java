@@ -278,6 +278,14 @@ public class SquireEntity extends TamableAnimal {
         if (source.getEntity() instanceof Player player && this.isOwnedBy(player)) {
             return false;
         }
+        // God mode: take damage but never die (clamp at 1 HP)
+        if (SquireConfig.godMode.get()) {
+            float newHealth = this.getHealth() - amount;
+            if (newHealth < 1.0F) {
+                this.setHealth(1.0F);
+                return true; // still show hurt animation
+            }
+        }
         return super.hurt(source, amount);
     }
 

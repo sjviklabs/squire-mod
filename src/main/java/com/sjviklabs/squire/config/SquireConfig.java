@@ -12,6 +12,9 @@ public final class SquireConfig {
 
     public static final ModConfigSpec SPEC;
 
+    // --- Debug / testing ---
+    public static final ModConfigSpec.BooleanValue godMode;
+
     // --- Per-player limits ---
     public static final ModConfigSpec.IntValue maxSquiresPerPlayer;
 
@@ -55,6 +58,13 @@ public final class SquireConfig {
 
     static {
         ModConfigSpec.Builder builder = new ModConfigSpec.Builder();
+
+        // ---- Debug / testing ----
+        builder.push("debug");
+        godMode = builder
+                .comment("When true, squires cannot die — health is clamped at 1 HP minimum. For testing.")
+                .define("godMode", false);
+        builder.pop();
 
         // ---- Per-player limits ----
         builder.push("limits");
