@@ -56,6 +56,10 @@ public class SquireAI {
     public MiningHandler getMining() { return mining; }
     public PlacingHandler getPlacing() { return placing; }
 
+    /** Convenience: delegates to SquireEntity's ProgressionHandler. */
+    public void awardKillXP() { squire.getProgression().addKillXP(); }
+    public void awardMineXP() { squire.getProgression().addMineXP(); }
+
     public void tick() {
         machine.tick(squire);
     }

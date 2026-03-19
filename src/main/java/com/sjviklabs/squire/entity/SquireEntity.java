@@ -1,5 +1,6 @@
 package com.sjviklabs.squire.entity;
 
+import com.sjviklabs.squire.ai.handler.ProgressionHandler;
 import com.sjviklabs.squire.ai.statemachine.SquireAI;
 import com.sjviklabs.squire.config.SquireConfig;
 import com.sjviklabs.squire.init.ModItems;
@@ -15,6 +16,7 @@ import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvent;
+import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.SimpleMenuProvider;
@@ -50,12 +52,17 @@ public class SquireEntity extends TamableAnimal {
             SynchedEntityData.defineId(SquireEntity.class, EntityDataSerializers.BYTE);
     private static final EntityDataAccessor<Boolean> IS_SPRINTING =
             SynchedEntityData.defineId(SquireEntity.class, EntityDataSerializers.BOOLEAN);
+    private static final EntityDataAccessor<Integer> SQUIRE_LEVEL =
+            SynchedEntityData.defineId(SquireEntity.class, EntityDataSerializers.INT);
 
     public static final byte MODE_FOLLOW = 0;
     public static final byte MODE_STAY = 1;
 
     // ---- Inventory ----
     private final SquireInventory inventory = new SquireInventory(this);
+
+    // ---- Progression ----
+    private final ProgressionHandler progression = new ProgressionHandler(this);
 
     // ---- AI ----
     private SquireAI squireAI;
@@ -91,6 +98,7 @@ public class SquireEntity extends TamableAnimal {
         super.defineSynchedData(builder);
         builder.define(SQUIRE_MODE, MODE_FOLLOW);
         builder.define(IS_SPRINTING, false);
+        builder.define(SQUIRE_LEVEL, 0);
     }
 
     public byte getSquireMode() {
@@ -109,6 +117,14 @@ public class SquireEntity extends TamableAnimal {
     public void setSquireSprinting(boolean sprinting) {
         this.entityData.set(IS_SPRINTING, sprinting);
         this.setSprinting(sprinting);
+    }
+
+    public int getSquireLevel() {
+        return this.entityData.get(SQUIRE_LEVEL);
+    }
+
+    public void setSquireLevel(int level) {
+        this.entityData.set(SQUIRE_LEVEL, level);
     }
 
     // ================================================================
@@ -200,6 +216,10 @@ public class SquireEntity extends TamableAnimal {
         return this.inventory;
     }
 
+    public ProgressionHandler getProgression() {
+        return this.progression;
+    }
+
     // ================================================================
     // NBT persistence
     // ================================================================
@@ -209,6 +229,7 @@ public class SquireEntity extends TamableAnimal {
         super.addAdditionalSaveData(tag);
         tag.put("SquireInventory", this.inventory.toTag(this.registryAccess()));
         tag.putByte("SquireMode", getSquireMode());
+        this.progression.save(tag);
     }
 
     @Override
@@ -220,6 +241,7 @@ public class SquireEntity extends TamableAnimal {
         if (tag.contains("SquireMode")) {
             setSquireMode(tag.getByte("SquireMode"));
         }
+        this.progression.load(tag);
     }
 
     // ================================================================
@@ -308,24 +330,22 @@ public class SquireEntity extends TamableAnimal {
     }
 
     // ================================================================
-    // Sounds (placeholders -- will be replaced with custom sounds)
+    // Sounds — use player sounds so squire feels human
     // ================================================================
 
     @Nullable
     @Override
     protected SoundEvent getAmbientSound() {
-        return null;
+        return null; // Intentionally silent
     }
 
-    @Nullable
     @Override
     protected SoundEvent getHurtSound(DamageSource source) {
-        return null;
+        return SoundEvents.PLAYER_HURT;
     }
 
-    @Nullable
     @Override
     protected SoundEvent getDeathSound() {
-        return null;
+        return SoundEvents.PLAYER_DEATH;
     }
 }

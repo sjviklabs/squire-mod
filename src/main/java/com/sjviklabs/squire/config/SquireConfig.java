@@ -39,6 +39,15 @@ public final class SquireConfig {
     // --- Placing ---
     public static final ModConfigSpec.DoubleValue placeReach;
 
+    // --- Progression ---
+    public static final ModConfigSpec.IntValue xpPerKill;
+    public static final ModConfigSpec.IntValue xpPerBlock;
+    public static final ModConfigSpec.IntValue xpPerLevel;
+    public static final ModConfigSpec.IntValue maxLevel;
+    public static final ModConfigSpec.DoubleValue healthPerLevel;
+    public static final ModConfigSpec.DoubleValue damagePerLevel;
+    public static final ModConfigSpec.DoubleValue speedPerLevel;
+
     // --- Tick intervals ---
     public static final ModConfigSpec.IntValue itemScanInterval;
     public static final ModConfigSpec.IntValue equipCheckInterval;
@@ -112,6 +121,31 @@ public final class SquireConfig {
         placeReach = builder
                 .comment("Maximum distance (blocks) at which the squire can place a block.")
                 .defineInRange("placeReach", 4.0, 2.0, 8.0);
+        builder.pop();
+
+        // ---- Progression ----
+        builder.push("progression");
+        xpPerKill = builder
+                .comment("XP gained per mob kill.")
+                .defineInRange("xpPerKill", 10, 1, 100);
+        xpPerBlock = builder
+                .comment("XP gained per block mined.")
+                .defineInRange("xpPerBlock", 1, 1, 50);
+        xpPerLevel = builder
+                .comment("XP required per level.")
+                .defineInRange("xpPerLevel", 100, 50, 1000);
+        maxLevel = builder
+                .comment("Maximum squire level.")
+                .defineInRange("maxLevel", 10, 1, 50);
+        healthPerLevel = builder
+                .comment("Bonus max HP per level.")
+                .defineInRange("healthPerLevel", 2.0, 0.0, 10.0);
+        damagePerLevel = builder
+                .comment("Bonus attack damage per level.")
+                .defineInRange("damagePerLevel", 0.5, 0.0, 5.0);
+        speedPerLevel = builder
+                .comment("Bonus movement speed per level.")
+                .defineInRange("speedPerLevel", 0.005, 0.0, 0.05);
         builder.pop();
 
         // ---- Tick intervals ----

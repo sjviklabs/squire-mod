@@ -165,6 +165,9 @@ public class MiningHandler {
             // Destroy block with drops
             serverLevel.destroyBlock(targetPos, true, s);
 
+            // Award mining XP
+            s.getProgression().addMineXP();
+
             // Clear crack overlay
             serverLevel.destroyBlockProgress(s.getId(), targetPos, -1);
 

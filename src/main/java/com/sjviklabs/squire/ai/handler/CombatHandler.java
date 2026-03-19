@@ -79,6 +79,9 @@ public class CombatHandler {
             s.swing(InteractionHand.MAIN_HAND);
             s.doHurtTarget(target);
             recalculateAttackCooldown();
+            if (!target.isAlive()) {
+                s.getProgression().addKillXP();
+            }
         }
 
         return SquireAIState.COMBAT_APPROACH;
