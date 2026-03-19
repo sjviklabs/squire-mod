@@ -1,166 +1,146 @@
 package com.sjviklabs.squire.inventory;
 
+import com.sjviklabs.squire.entity.SquireEntity;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
-import net.minecraft.world.Container;
+import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 
-public class SquireInventory implements Container {
-    private final ItemStack[] items;
-    private final int size;
+import javax.annotation.Nullable;
 
+/**
+ * 27-slot inventory for a SquireEntity. Extends SimpleContainer to inherit
+ * standard slot management, listener support, and stacked-contents tracking.
+ * <p>
+ * Custom methods handle item merging, bulk drop on death, and slot-indexed
+ * NBT serialization that preserves empty-slot gaps (vanilla SimpleContainer's
+ * {@code createTag/fromTag} does not preserve slot indices).
+ */
+public class SquireInventory extends SimpleContainer {
+
+    private static final int SIZE = 27;
+
+    @Nullable
+    private final SquireEntity owner;
+
+    /**
+     * Primary constructor for use by SquireEntity.
+     *
+     * @param owner the entity that owns this inventory
+     */
+    public SquireInventory(SquireEntity owner) {
+        super(SIZE);
+        this.owner = owner;
+    }
+
+    /**
+     * Fallback constructor for client-side or test contexts where no owner exists.
+     * {@link #stillValid(Player)} will always return false when created this way.
+     */
     public SquireInventory(int size) {
-        this.size = size;
-        this.items = new ItemStack[size];
-        for (int i = 0; i < size; i++) {
-            this.items[i] = ItemStack.EMPTY;
-        }
+        super(size);
+        this.owner = null;
     }
 
-    @Override
-    public int getContainerSize() {
-        return this.size;
-    }
-
-    @Override
-    public boolean isEmpty() {
-        for (ItemStack stack : this.items) {
-            if (!stack.isEmpty()) return false;
-        }
-        return true;
-    }
-
-    @Override
-    public ItemStack getItem(int slot) {
-        return slot >= 0 && slot < this.size ? this.items[slot] : ItemStack.EMPTY;
-    }
-
-    @Override
-    public ItemStack removeItem(int slot, int amount) {
-        if (slot >= 0 && slot < this.size && !this.items[slot].isEmpty() && amount > 0) {
-            ItemStack split = this.items[slot].split(amount);
-            if (this.items[slot].isEmpty()) {
-                this.items[slot] = ItemStack.EMPTY;
-            }
-            this.setChanged();
-            return split;
-        }
-        return ItemStack.EMPTY;
-    }
-
-    @Override
-    public ItemStack removeItemNoUpdate(int slot) {
-        if (slot >= 0 && slot < this.size) {
-            ItemStack stack = this.items[slot];
-            this.items[slot] = ItemStack.EMPTY;
-            return stack;
-        }
-        return ItemStack.EMPTY;
-    }
-
-    @Override
-    public void setItem(int slot, ItemStack stack) {
-        if (slot >= 0 && slot < this.size) {
-            this.items[slot] = stack;
-            if (!stack.isEmpty() && stack.getCount() > this.getMaxStackSize()) {
-                stack.setCount(this.getMaxStackSize());
-            }
-            this.setChanged();
-        }
-    }
-
-    @Override
-    public void setChanged() {
-        // No-op for entity inventory
-    }
+    // ------------------------------------------------------------------
+    // Validation
+    // ------------------------------------------------------------------
 
     @Override
     public boolean stillValid(Player player) {
-        return true;
+        if (this.owner == null) {
+            return false;
+        }
+        return this.owner.isAlive() && this.owner.distanceTo(player) < 8.0;
     }
 
+    // ------------------------------------------------------------------
+    // Item insertion (merge-first, then empty slots)
+    // ------------------------------------------------------------------
+
+    /**
+     * Check whether the inventory has room for at least one unit of {@code stack}.
+     * Delegates to the parent implementation which already checks same-type merges
+     * and empty slots.
+     */
     @Override
-    public void clearContent() {
-        for (int i = 0; i < this.size; i++) {
-            this.items[i] = ItemStack.EMPTY;
-        }
-    }
-
     public boolean canAddItem(ItemStack stack) {
-        for (ItemStack existing : this.items) {
-            if (existing.isEmpty()) return true;
-            if (ItemStack.isSameItemSameComponents(existing, stack)
-                    && existing.getCount() < existing.getMaxStackSize()) {
-                return true;
-            }
-        }
-        return false;
+        return super.canAddItem(stack);
     }
 
+    /**
+     * Try to add {@code stack} to the inventory, merging with existing stacks first,
+     * then filling empty slots. Returns the remainder that could not be inserted
+     * (or {@link ItemStack#EMPTY} if everything fit).
+     * <p>
+     * Delegates to the parent {@link SimpleContainer#addItem} which already
+     * implements merge-first + empty-slot logic.
+     */
+    @Override
     public ItemStack addItem(ItemStack stack) {
-        ItemStack remaining = stack.copy();
-
-        // First pass: try to merge with existing stacks
-        for (int i = 0; i < this.size && !remaining.isEmpty(); i++) {
-            if (ItemStack.isSameItemSameComponents(this.items[i], remaining)) {
-                int space = this.items[i].getMaxStackSize() - this.items[i].getCount();
-                int toAdd = Math.min(remaining.getCount(), space);
-                if (toAdd > 0) {
-                    this.items[i].grow(toAdd);
-                    remaining.shrink(toAdd);
-                }
-            }
-        }
-
-        // Second pass: find empty slots
-        for (int i = 0; i < this.size && !remaining.isEmpty(); i++) {
-            if (this.items[i].isEmpty()) {
-                this.items[i] = remaining.copy();
-                remaining = ItemStack.EMPTY;
-            }
-        }
-
-        this.setChanged();
-        return remaining;
+        return super.addItem(stack);
     }
 
+    // ------------------------------------------------------------------
+    // Bulk drop (death / despawn)
+    // ------------------------------------------------------------------
+
+    /**
+     * Spawns {@link ItemEntity} instances for every non-empty slot, then clears
+     * the inventory. Intended to be called server-side on entity death.
+     */
+    public void dropAll(Level level, BlockPos pos) {
+        for (int i = 0; i < this.getContainerSize(); i++) {
+            ItemStack stack = this.getItem(i);
+            if (!stack.isEmpty()) {
+                level.addFreshEntity(new ItemEntity(
+                        level,
+                        pos.getX() + 0.5,
+                        pos.getY() + 0.5,
+                        pos.getZ() + 0.5,
+                        stack.copy()
+                ));
+            }
+        }
+        this.clearContent();
+    }
+
+    // ------------------------------------------------------------------
+    // NBT — slot-indexed format (preserves empty gaps, unlike vanilla)
+    // ------------------------------------------------------------------
+
+    /**
+     * Serialize to a {@link ListTag} where each compound carries a {@code Slot}
+     * byte so empty slots in the middle are preserved on reload.
+     */
     public ListTag toTag(HolderLookup.Provider registries) {
         ListTag list = new ListTag();
-        for (int i = 0; i < this.size; i++) {
-            if (!this.items[i].isEmpty()) {
+        for (int i = 0; i < this.getContainerSize(); i++) {
+            ItemStack stack = this.getItem(i);
+            if (!stack.isEmpty()) {
                 CompoundTag itemTag = new CompoundTag();
                 itemTag.putByte("Slot", (byte) i);
-                list.add(this.items[i].save(registries, itemTag));
+                list.add(stack.save(registries, itemTag));
             }
         }
         return list;
     }
 
+    /**
+     * Deserialize from the slot-indexed {@link ListTag} produced by {@link #toTag}.
+     */
     public void fromTag(ListTag list, HolderLookup.Provider registries) {
         this.clearContent();
         for (int i = 0; i < list.size(); i++) {
             CompoundTag itemTag = list.getCompound(i);
             int slot = itemTag.getByte("Slot") & 255;
-            if (slot < this.size) {
-                this.items[slot] = ItemStack.parse(registries, itemTag).orElse(ItemStack.EMPTY);
-            }
-        }
-    }
-
-    public void dropAll(Level level, BlockPos pos) {
-        for (int i = 0; i < this.size; i++) {
-            if (!this.items[i].isEmpty()) {
-                level.addFreshEntity(new ItemEntity(
-                        level,
-                        pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5,
-                        this.items[i].copy()
-                ));
-                this.items[i] = ItemStack.EMPTY;
+            if (slot < this.getContainerSize()) {
+                ItemStack.parse(registries, itemTag).ifPresent(stack -> this.setItem(slot, stack));
             }
         }
     }

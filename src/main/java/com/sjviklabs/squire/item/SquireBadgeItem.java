@@ -26,7 +26,7 @@ public class SquireBadgeItem extends Item {
             SquireEntity squire = ModEntities.SQUIRE.get().create(serverLevel);
             if (squire != null) {
                 squire.moveTo(pos.getX() + 0.5, pos.getY(), pos.getZ() + 0.5, 0, 0);
-                squire.setOwnerUUID(context.getPlayer().getUUID());
+                squire.tame(context.getPlayer());
                 squire.setCustomName(Component.literal("Squire"));
                 serverLevel.addFreshEntity(squire);
 
