@@ -59,6 +59,7 @@ public class SurvivalHandler {
 
         if (eatingTicks <= 0) {
             consumeFood(s);
+            return SquireAIState.IDLE;
         }
 
         return SquireAIState.EATING;

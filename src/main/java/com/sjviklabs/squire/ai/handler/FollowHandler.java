@@ -50,6 +50,10 @@ public class FollowHandler {
     public void stop() {
         squire.setSquireSprinting(false);
         squire.getNavigation().stop();
+        if (squire.getNavigation() instanceof GroundPathNavigation groundNav) {
+            groundNav.setCanOpenDoors(false);
+            groundNav.setCanPassDoors(false);
+        }
     }
 
     /** Per-tick follow logic with throttled path recalculation. */

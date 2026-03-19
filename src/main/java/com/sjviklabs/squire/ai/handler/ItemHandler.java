@@ -93,8 +93,8 @@ public class ItemHandler {
     private void pickUpItem(SquireEntity s) {
         if (targetItem == null || !targetItem.isAlive()) return;
 
-        ItemStack stack = targetItem.getItem().copy();
-        ItemStack remainder = s.getSquireInventory().addItem(stack);
+        ItemStack original = targetItem.getItem().copy();
+        ItemStack remainder = s.getSquireInventory().addItem(original.copy());
 
         if (remainder.isEmpty()) {
             targetItem.discard();
@@ -102,7 +102,8 @@ public class ItemHandler {
             targetItem.setItem(remainder);
         }
 
-        SquireEquipmentHelper.tryAutoEquip(s, stack);
+        // Pass the pre-insertion copy — addItem() consumes the stack in-place
+        SquireEquipmentHelper.tryAutoEquip(s, original);
         targetItem = null;
     }
 }
