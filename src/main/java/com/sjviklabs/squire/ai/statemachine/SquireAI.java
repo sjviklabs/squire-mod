@@ -4,6 +4,7 @@ import com.sjviklabs.squire.ai.handler.CombatHandler;
 import com.sjviklabs.squire.ai.handler.FollowHandler;
 import com.sjviklabs.squire.ai.handler.ItemHandler;
 import com.sjviklabs.squire.ai.handler.MiningHandler;
+import com.sjviklabs.squire.ai.handler.PlacingHandler;
 import com.sjviklabs.squire.ai.handler.SurvivalHandler;
 import com.sjviklabs.squire.entity.SquireEntity;
 import net.minecraft.world.entity.player.Player;
@@ -30,6 +31,7 @@ public class SquireAI {
     private final FollowHandler follow;
     private final ItemHandler items;
     private final MiningHandler mining;
+    private final PlacingHandler placing;
 
     public SquireAI(SquireEntity squire) {
         this.squire = squire;
@@ -39,6 +41,7 @@ public class SquireAI {
         this.follow = new FollowHandler(squire);
         this.items = new ItemHandler(squire);
         this.mining = new MiningHandler(squire);
+        this.placing = new PlacingHandler(squire);
         registerTransitions();
     }
 
@@ -51,6 +54,7 @@ public class SquireAI {
     public FollowHandler getFollow() { return follow; }
     public ItemHandler getItems() { return items; }
     public MiningHandler getMining() { return mining; }
+    public PlacingHandler getPlacing() { return placing; }
 
     public void tick() {
         machine.tick(squire);
@@ -66,6 +70,7 @@ public class SquireAI {
         registerEatingTransitions();
         registerFollowTransitions();
         registerMiningTransitions();
+        registerPlacingTransitions();
         registerPickupTransitions();
         registerIdleTransitions();
     }
@@ -228,6 +233,47 @@ public class SquireAI {
                 mining::hasTarget,
                 mining::tickBreak,
                 1, 35
+        ));
+    }
+
+    // ---- Placing (priority 36) ----
+    // Command-driven: setTarget() on PlacingHandler, then state machine takes over.
+
+    private void registerPlacingTransitions() {
+        // PLACING_APPROACH: walk toward target position
+        machine.addTransition(new AITransition(
+                SquireAIState.PLACING_APPROACH,
+                () -> !placing.hasTarget(),
+                s -> {
+                    placing.clearTarget();
+                    return SquireAIState.IDLE;
+                },
+                1, 35
+        ));
+
+        machine.addTransition(new AITransition(
+                SquireAIState.PLACING_APPROACH,
+                placing::hasTarget,
+                placing::tickApproach,
+                1, 36
+        ));
+
+        // PLACING_BLOCK: place the block
+        machine.addTransition(new AITransition(
+                SquireAIState.PLACING_BLOCK,
+                () -> !placing.hasTarget(),
+                s -> {
+                    placing.clearTarget();
+                    return SquireAIState.IDLE;
+                },
+                1, 35
+        ));
+
+        machine.addTransition(new AITransition(
+                SquireAIState.PLACING_BLOCK,
+                placing::hasTarget,
+                placing::tickPlace,
+                1, 36
         ));
     }
 
