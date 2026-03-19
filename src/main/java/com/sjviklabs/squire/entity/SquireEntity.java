@@ -1,10 +1,6 @@
 package com.sjviklabs.squire.entity;
 
-import com.sjviklabs.squire.ai.SquireEatGoal;
-import com.sjviklabs.squire.ai.SquireFollowOwnerGoal;
-import com.sjviklabs.squire.ai.SquireMeleeGoal;
-import com.sjviklabs.squire.ai.SquirePickupGoal;
-import com.sjviklabs.squire.ai.SquireSitGoal;
+import com.sjviklabs.squire.ai.statemachine.SquireAI;
 import com.sjviklabs.squire.config.SquireConfig;
 import com.sjviklabs.squire.init.ModItems;
 import com.sjviklabs.squire.util.SquireEquipmentHelper;
@@ -29,8 +25,6 @@ import net.minecraft.world.entity.TamableAnimal;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.goal.FloatGoal;
-import net.minecraft.world.entity.ai.goal.LookAtPlayerGoal;
-import net.minecraft.world.entity.ai.goal.RandomLookAroundGoal;
 import net.minecraft.world.entity.ai.goal.target.HurtByTargetGoal;
 import net.minecraft.world.entity.ai.goal.target.OwnerHurtByTargetGoal;
 import net.minecraft.world.entity.ai.goal.target.OwnerHurtTargetGoal;
@@ -62,6 +56,9 @@ public class SquireEntity extends TamableAnimal {
 
     // ---- Inventory ----
     private final SquireInventory inventory = new SquireInventory(this);
+
+    // ---- AI ----
+    private SquireAI squireAI;
 
     // ---- Constructor ----
     public SquireEntity(EntityType<? extends SquireEntity> type, Level level) {
@@ -120,20 +117,16 @@ public class SquireEntity extends TamableAnimal {
 
     @Override
     protected void registerGoals() {
-        // --- Behaviour goals (lower number = higher priority) ---
+        // FloatGoal stays in vanilla system — handles swimming/not drowning
         this.goalSelector.addGoal(0, new FloatGoal(this));
-        this.goalSelector.addGoal(1, new SquireSitGoal(this));
-        this.goalSelector.addGoal(2, new SquireMeleeGoal(this));
-        this.goalSelector.addGoal(3, new SquireEatGoal(this));
-        this.goalSelector.addGoal(4, new SquireFollowOwnerGoal(this));
-        this.goalSelector.addGoal(5, new SquirePickupGoal(this));
-        this.goalSelector.addGoal(6, new LookAtPlayerGoal(this, Player.class, 8.0F));
-        this.goalSelector.addGoal(7, new RandomLookAroundGoal(this));
 
-        // --- Target goals (no blanket monster aggro) ---
+        // Target selection stays in vanilla system — sets getTarget() for state machine
         this.targetSelector.addGoal(1, new OwnerHurtByTargetGoal(this));
         this.targetSelector.addGoal(2, new OwnerHurtTargetGoal(this));
         this.targetSelector.addGoal(3, new HurtByTargetGoal(this));
+
+        // All behavior goals (sit, combat, eat, follow, pickup, look) are now
+        // handled by SquireAI's tick-rate state machine. See aiStep().
     }
 
     // ================================================================
@@ -276,11 +269,24 @@ public class SquireEntity extends TamableAnimal {
     public void aiStep() {
         super.aiStep();
         if (!this.level().isClientSide) {
+            // Lazy init — can't create in constructor because registerGoals()
+            // runs during super() before our fields are initialized
+            if (this.squireAI == null) {
+                this.squireAI = new SquireAI(this);
+            }
+            this.squireAI.tick();
+
             if (++this.equipCheckTimer >= SquireConfig.equipCheckInterval.get()) {
                 this.equipCheckTimer = 0;
                 SquireEquipmentHelper.runFullEquipCheck(this);
             }
         }
+    }
+
+    /** Accessor for debug/admin commands. Null before first server-side aiStep(). */
+    @Nullable
+    public SquireAI getSquireAI() {
+        return this.squireAI;
     }
 
     // ================================================================
