@@ -88,7 +88,8 @@ public class SquireEntity extends TamableAnimal {
                 .add(Attributes.ATTACK_DAMAGE, 1.0D)
                 .add(Attributes.FOLLOW_RANGE, 32.0D)
                 .add(Attributes.ARMOR, 0.0D)
-                .add(Attributes.ATTACK_SPEED, 4.0D);
+                .add(Attributes.ATTACK_SPEED, 4.0D)
+                .add(Attributes.STEP_HEIGHT, 1.5D);
     }
 
     // ================================================================
@@ -280,15 +281,34 @@ public class SquireEntity extends TamableAnimal {
         if (source.getEntity() instanceof Player player && this.isOwnedBy(player)) {
             return false;
         }
-        // God mode: take damage but never die (clamp at 1 HP)
+        // God mode: cap incoming damage so health never drops below 1 HP
         if (SquireConfig.godMode.get()) {
-            float newHealth = this.getHealth() - amount;
-            if (newHealth < 1.0F) {
-                this.setHealth(1.0F);
-                return true; // still show hurt animation
+            float maxDamage = this.getHealth() - 1.0F;
+            if (maxDamage <= 0.0F) {
+                // Already at or below 1 HP — absorb hit but take no damage
+                return super.hurt(source, 0.0F);
             }
+            return super.hurt(source, Math.min(amount, maxDamage));
         }
         return super.hurt(source, amount);
+    }
+
+    // ================================================================
+    // Swimming — boost speed in water to keep up with player
+    // ================================================================
+
+    @Override
+    public void travel(net.minecraft.world.phys.Vec3 travelVector) {
+        if (this.isInWater() && this.isEffectiveAi()) {
+            this.moveRelative(0.12F, travelVector);
+            this.move(net.minecraft.world.entity.MoverType.SELF, this.getDeltaMovement());
+            this.setDeltaMovement(this.getDeltaMovement().scale(0.72D));
+            if (this.horizontalCollision && this.onClimbable()) {
+                this.setDeltaMovement(this.getDeltaMovement().x, 0.3D, this.getDeltaMovement().z);
+            }
+        } else {
+            super.travel(travelVector);
+        }
     }
 
     // ================================================================

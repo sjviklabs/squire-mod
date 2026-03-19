@@ -4,11 +4,14 @@ import com.sjviklabs.squire.ai.statemachine.SquireAIState;
 import com.sjviklabs.squire.config.SquireConfig;
 import com.sjviklabs.squire.entity.SquireEntity;
 import com.sjviklabs.squire.util.SquireEquipmentHelper;
+import net.minecraft.tags.ItemTags;
 import net.minecraft.world.entity.item.ItemEntity;
-import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.*;
 import net.minecraft.world.phys.AABB;
 
 import java.util.List;
+import java.util.Set;
 
 /**
  * Handles item pickup: scanning for nearby items, walking to them, picking up.
@@ -21,18 +24,38 @@ public class ItemHandler {
 
     private static final double PICKUP_DIST_SQ = 4.0D;
 
+    /** Items not worth picking up — junk that clutters inventory and distracts from following. */
+    private static final Set<Item> IGNORED_ITEMS = Set.of(
+            Items.WHEAT_SEEDS, Items.BEETROOT_SEEDS, Items.MELON_SEEDS, Items.PUMPKIN_SEEDS,
+            Items.POISONOUS_POTATO, Items.DEAD_BUSH, Items.FERN, Items.SHORT_GRASS,
+            Items.KELP, Items.SEAGRASS, Items.LILY_PAD, Items.VINE,
+            Items.ROTTEN_FLESH, Items.SPIDER_EYE,
+            Items.DIRT, Items.COBBLESTONE, Items.GRAVEL, Items.SAND,
+            Items.SNOWBALL, Items.ICE
+    );
+
     public ItemHandler(SquireEntity squire) {
         this.squire = squire;
     }
 
-    /** Scan for nearby items the inventory can hold. */
+    /** Scan for nearby items the inventory can hold. Skips junk and won't wander from owner. */
     public boolean findClosestItem() {
+        // Don't chase items if owner is far — follow takes priority
+        Player owner = squire.getOwner() instanceof Player p ? p : null;
+        if (owner != null) {
+            double followStart = SquireConfig.followStartDistance.get();
+            if (squire.distanceToSqr(owner) > followStart * followStart) {
+                return false;
+            }
+        }
+
         double range = SquireConfig.itemPickupRange.get();
         AABB box = squire.getBoundingBox().inflate(range);
 
         List<ItemEntity> items = squire.level().getEntitiesOfClass(
                 ItemEntity.class, box,
                 item -> item.isAlive() && !item.hasPickUpDelay()
+                        && !IGNORED_ITEMS.contains(item.getItem().getItem())
         );
         if (items.isEmpty()) return false;
 
