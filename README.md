@@ -1,27 +1,74 @@
+# Squire Mod
 
-Installation information
-=======
+A true player-like companion entity for Minecraft. Your squire walks, runs, swims, fights with weapons, wears armor, eats food, and follows your lead. No teleporting. No cheating. Just a loyal companion that does things the hard way.
 
-This template repository can be directly cloned to get you started with a new
-mod. Simply create a new repository cloned from this one, by following the
-instructions at [github](https://docs.github.com/en/repositories/creating-and-managing-repositories/creating-a-repository-from-a-template).
+**Platform:** NeoForge 1.21.1
+**License:** MIT
 
-Once you have your clone, simply open the repository in the IDE of your choice. The usual recommendation for an IDE is either IntelliJ IDEA or Eclipse.
+## Features (Phase 1 — In Development)
 
-> **Note**: For Eclipse, use tasks in `Launch Group` instead of ones founds in `Java Application`. A preparation task must run before launching the game. NeoGradle uses launch groups to do these subsequently.
+- **Player-like movement** — walks, runs, sprints, swims. Never teleports.
+- **Combat** — defends you with equipped weapons. Fights what you fight, fights what fights you.
+- **Auto-equip** — picks up and equips the best armor, weapons, and shields from inventory.
+- **Survival** — eats food when health is low.
+- **Modes** — FOLLOW (default) and STAY (shift+right-click to toggle).
+- **Recall** — right-click your badge to call the squire back.
+- **Inventory** — 27-slot general inventory + armor/offhand slots. Right-click to open.
+- **Death** — drops inventory + badge on death. Resummon with the badge.
+- **Config** — every value is configurable for modpack authors.
+- **Multiplayer** — one squire per player, admin commands for server management.
 
-If at any point you are missing libraries in your IDE, or you've run into problems you can
-run `gradlew --refresh-dependencies` to refresh the local cache. `gradlew clean` to reset everything 
-{this does not affect your code} and then start the process again.
+## Installation
 
-Mapping Names:
-============
-By default, the MDK is configured to use the official mapping names from Mojang for methods and fields 
-in the Minecraft codebase. These names are covered by a specific license. All modders should be aware of this
-license. For the latest license text, refer to the mapping file itself, or the reference copy here:
-https://github.com/NeoForged/NeoForm/blob/main/Mojang.md
+1. Install [NeoForge](https://neoforged.net/) for Minecraft 1.21.1
+2. Download the latest release from [CurseForge](#) or [Modrinth](#)
+3. Place the JAR in your `mods/` folder
+4. Launch the game
 
-Additional Resources: 
-==========
-Community Documentation: https://docs.neoforged.net/  
-NeoForged Discord: https://discord.neoforged.net/
+## Crafting
+
+Craft a **Squire Badge** to summon your companion. Right-click with the badge to summon. Shift+right-click the squire to toggle FOLLOW/STAY.
+
+## For Modpack Authors
+
+All values are configurable via `squire-common.toml`:
+- Max squires per player
+- Follow/sprint/combat distances
+- Health, regen, eat threshold
+- Tick intervals for all AI systems
+
+The squire implements `OwnableEntity` and uses `MobCategory.MISC` (does not affect mob caps).
+
+## Roadmap
+
+- **Phase 1:** Walk, fight, equip, follow (current)
+- **Phase 2:** Block breaking/placing, tool selection, progression system
+- **Phase 3:** Player commands ("mine here", "guard", "store items")
+- **Phase 4:** Autonomous multi-step tasks, MineColonies-grade intelligence
+
+See [docs/PHASE-ROADMAP.md](docs/PHASE-ROADMAP.md) for details.
+
+## Development
+
+```bash
+# Build
+./gradlew build
+
+# Run client
+./gradlew runClient
+
+# Run server
+./gradlew runServer
+```
+
+**IDE:** IntelliJ IDEA with [Minecraft Development Plugin](https://mcdev.io/)
+**JDK:** Java 21
+
+## Links
+
+- [NeoForged Documentation](https://docs.neoforged.net/)
+- [NeoForge Discord](https://discord.neoforged.net/)
+
+## License
+
+MIT License. See [LICENSE](LICENSE).
