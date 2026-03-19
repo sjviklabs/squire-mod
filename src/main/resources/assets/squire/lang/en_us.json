@@ -2,5 +2,10 @@
   "itemGroup.squire": "Squire",
   "item.squire.squire_badge": "Squire's Badge",
   "entity.squire.squire": "Squire",
-  "container.squire.inventory": "Squire's Inventory"
+  "container.squire.inventory": "Squire's Inventory",
+  "squire.mode.stay": "Squire: Stay",
+  "squire.mode.follow": "Squire: Follow",
+  "squire.badge.limit": "You already have the maximum number of squires (%s)",
+  "squire.badge.no_squire": "You don't have an active squire",
+  "squire.badge.recall": "Recalling your squire..."
 }
