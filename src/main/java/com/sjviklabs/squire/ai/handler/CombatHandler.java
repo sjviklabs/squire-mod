@@ -27,6 +27,12 @@ public class CombatHandler {
         squire.setSquireSprinting(false);
         ticksUntilNextAttack = 0;
         recalculateAttackCooldown();
+        var log = squire.getActivityLog();
+        if (log != null) {
+            LivingEntity target = squire.getTarget();
+            String targetName = target != null ? target.getType().toShortString() : "unknown";
+            log.log("COMBAT", "Engaging " + targetName);
+        }
     }
 
     /**
@@ -79,12 +85,17 @@ public class CombatHandler {
             s.swing(InteractionHand.MAIN_HAND);
             boolean hitLanded = s.doHurtTarget(target);
             recalculateAttackCooldown();
-            if (hitLanded && !target.isAlive()) {
-                s.getProgression().addKillXP();
+            if (hitLanded) {
                 var log = s.getActivityLog();
-                if (log != null) {
-                    log.log("COMBAT", "Killed " + target.getType().toShortString()
-                            + " at " + target.blockPosition().toShortString());
+                if (!target.isAlive()) {
+                    s.getProgression().addKillXP();
+                    if (log != null) {
+                        log.log("COMBAT", "Killed " + target.getType().toShortString()
+                                + " at " + target.blockPosition().toShortString());
+                    }
+                } else if (log != null) {
+                    log.log("COMBAT", "Hit " + target.getType().toShortString()
+                            + " (HP: " + String.format("%.1f", target.getHealth()) + ")");
                 }
             }
         }
