@@ -25,10 +25,14 @@ jobs:
       - name: Build with Gradle
         run: ./gradlew build
 
+      - name: Extract mod version
+        id: version
+        run: echo "version=$(grep '^mod_version=' gradle.properties | cut -d= -f2)" >> "$GITHUB_OUTPUT"
+
       - name: Upload artifacts
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: squire-mod-${{ github.sha }}
+          name: squire-${{ steps.version.outputs.version }}-${{ github.sha }}
           path: build/libs/*.jar
-          retention-days: 14
+          retention-days: 30

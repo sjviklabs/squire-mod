@@ -28,3 +28,16 @@ logs
 src/generated/
 .DS_Store
 Thumbs.db
+
+# secrets / env
+.env
+*.pem
+*.key
+
+# OS
+desktop.ini
+ehthumbs.db
+
+# local testing
+crash-reports/
+*.log

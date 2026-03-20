@@ -1,0 +1,56 @@
+name: Deploy to Server
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type "deploy" to confirm'
+        required: true
+
+jobs:
+  deploy:
+    if: github.event.inputs.confirm == 'deploy'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build with Gradle
+        run: ./gradlew build
+
+      - name: Extract mod version
+        id: version
+        run: echo "version=$(grep '^mod_version=' gradle.properties | cut -d= -f2)" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy to Minecraft server
+        env:
+          DEPLOY_KEY: ${{ secrets.MC_DEPLOY_KEY }}
+          MC_HOST: ${{ secrets.MC_HOST }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$DEPLOY_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+
+          JAR=$(ls build/libs/squire-*.jar | grep -v sources | head -1)
+          echo "Deploying $JAR to server..."
+
+          # Stop server, deploy jar, start server
+          ssh -o StrictHostKeyChecking=no -i ~/.ssh/deploy_key "$MC_HOST" \
+            "sudo systemctl stop minecraft-stoneblock4"
+
+          scp -o StrictHostKeyChecking=no -i ~/.ssh/deploy_key \
+            "$JAR" "$MC_HOST:/opt/minecraft/stoneblock4/mods/"
+
+          ssh -o StrictHostKeyChecking=no -i ~/.ssh/deploy_key "$MC_HOST" \
+            "sudo systemctl start minecraft-stoneblock4"
+
+          echo "Deployed squire-${{ steps.version.outputs.version }} successfully"
