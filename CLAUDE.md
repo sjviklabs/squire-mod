@@ -60,15 +60,23 @@ All under `/squire`. Most require op level 2.
 - **Config**: all tunable values in SquireConfig, never hardcode gameplay numbers
 - **No Docker**: server runs on bare LXC, systemd-managed
 
-## Deploy to Server
+## Deploy
+
+LXC 111 (192.168.10.36) hosts two servers:
+- **MineColonies Official** — port 25566, service `minecraft-minecolonies` (primary)
+- **StoneBlock 4** — port 25565, service `minecraft-stoneblock4`
+
+Client instance: `%LOCALAPPDATA%/.ftba/instances/minecolonies official/mods/`
 
 ```bash
-# Build + deploy (uses SSH config alias "minecraft" for LXC 111)
-./deploy.sh            # deploy only, no restart
-./deploy.sh --restart  # deploy and restart server
-```
+# Deploy to MineColonies (default) + local client
+./deploy.sh                        # deploy only
+./deploy.sh --restart              # deploy and restart server
 
-GitHub Actions deploy workflow also available (requires self-hosted runner on LAN).
+# Deploy to specific server
+./deploy.sh stoneblock4 --restart
+./deploy.sh all --restart          # both servers
+```
 
 ## Version History
 - v0.2.0 — Abilities, ranged combat, guard mode, area clearing, chunk loading
