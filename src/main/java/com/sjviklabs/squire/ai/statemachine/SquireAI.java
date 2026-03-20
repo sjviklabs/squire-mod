@@ -110,26 +110,40 @@ public class SquireAI {
     // ---- Combat (global, priority 10) ----
 
     private void registerCombatTransitions() {
+        // Enter combat — choose melee or ranged based on equipment + level
         machine.addTransition(new AITransition(
                 null,
                 () -> {
                     SquireAIState state = machine.getCurrentState();
-                    if (state == SquireAIState.COMBAT_APPROACH || state == SquireAIState.COMBAT_ATTACK)
+                    if (state == SquireAIState.COMBAT_APPROACH || state == SquireAIState.COMBAT_ATTACK
+                            || state == SquireAIState.COMBAT_RANGED)
                         return false;
                     if (squire.isOrderedToSit()) return false;
                     return combat.hasTarget();
                 },
                 s -> {
                     combat.start();
+                    if (combat.shouldUseRanged()) {
+                        return SquireAIState.COMBAT_RANGED;
+                    }
                     return SquireAIState.COMBAT_APPROACH;
                 },
                 1, 10
         ));
 
+        // Melee tick
         machine.addTransition(new AITransition(
                 SquireAIState.COMBAT_APPROACH,
                 () -> true,
                 combat::tick,
+                1, 10
+        ));
+
+        // Ranged tick
+        machine.addTransition(new AITransition(
+                SquireAIState.COMBAT_RANGED,
+                () -> true,
+                combat::tickRanged,
                 1, 10
         ));
     }

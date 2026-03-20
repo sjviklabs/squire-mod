@@ -13,6 +13,7 @@ public enum SquireAIState {
     // Combat layer
     COMBAT_APPROACH,
     COMBAT_ATTACK,    // Phase 2: separate state when in melee range
+    COMBAT_RANGED,    // Phase 2: ranged bow combat at distance
 
     // Follow layer
     FOLLOWING_OWNER,

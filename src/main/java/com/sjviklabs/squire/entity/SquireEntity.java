@@ -5,6 +5,8 @@ import com.sjviklabs.squire.ai.handler.ProgressionHandler;
 import com.sjviklabs.squire.ai.statemachine.SquireAI;
 import com.sjviklabs.squire.config.SquireConfig;
 import com.sjviklabs.squire.init.ModItems;
+import com.sjviklabs.squire.util.SquireAbilities;
+import com.sjviklabs.squire.util.SquireChunkLoader;
 import com.sjviklabs.squire.util.SquireEquipmentHelper;
 import com.sjviklabs.squire.inventory.SquireEquipmentContainer;
 import com.sjviklabs.squire.inventory.SquireInventory;
@@ -22,9 +24,15 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.SimpleMenuProvider;
 import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.AgeableMob;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.TamableAnimal;
+import net.minecraft.world.entity.monster.RangedAttackMob;
+import net.minecraft.world.entity.projectile.AbstractArrow;
+import net.minecraft.world.entity.projectile.ProjectileUtil;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.goal.FloatGoal;
@@ -34,7 +42,9 @@ import net.minecraft.world.entity.ai.goal.target.OwnerHurtByTargetGoal;
 import net.minecraft.world.entity.ai.goal.target.OwnerHurtTargetGoal;
 import net.minecraft.world.entity.monster.Monster;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.BowItem;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
 
 import javax.annotation.Nullable;
@@ -47,7 +57,7 @@ import javax.annotation.Nullable;
  * IMPORTANT: This entity NEVER teleports to its owner. We override
  * tryToTeleportToOwner() as a no-op so the vanilla teleport path never fires.
  */
-public class SquireEntity extends TamableAnimal {
+public class SquireEntity extends TamableAnimal implements RangedAttackMob {
 
     // ---- Synched data keys ----
     // Mode byte: 0 = FOLLOW, 1 = STAY
@@ -60,6 +70,7 @@ public class SquireEntity extends TamableAnimal {
 
     public static final byte MODE_FOLLOW = 0;
     public static final byte MODE_STAY = 1;
+    public static final byte MODE_GUARD = 2;
 
     // ---- Inventory ----
     private final SquireInventory inventory = new SquireInventory(this);
@@ -70,6 +81,9 @@ public class SquireEntity extends TamableAnimal {
     // ---- AI ----
     private SquireAI squireAI;
     private SquireActivityLog activityLog;
+
+    // ---- Undying ability cooldown (ticks until revive is available again) ----
+    private int undyingCooldown = 0;
 
     // ---- Constructor ----
     public SquireEntity(EntityType<? extends SquireEntity> type, Level level) {
@@ -112,7 +126,24 @@ public class SquireEntity extends TamableAnimal {
 
     public void setSquireMode(byte mode) {
         this.entityData.set(SQUIRE_MODE, mode);
+        // STAY = sit down, no combat. GUARD = stand, fight, but don't follow.
         this.setOrderedToSit(mode == MODE_STAY);
+    }
+
+    /** Whether squire should follow owner (false for STAY and GUARD). */
+    public boolean shouldFollowOwner() {
+        byte mode = getSquireMode();
+        return mode == MODE_FOLLOW;
+    }
+
+    /** Human-readable mode name. */
+    public static String modeName(byte mode) {
+        return switch (mode) {
+            case MODE_FOLLOW -> "Follow";
+            case MODE_STAY -> "Stay";
+            case MODE_GUARD -> "Guard";
+            default -> "Unknown";
+        };
     }
 
     public boolean isSquireSprinting() {
@@ -189,17 +220,7 @@ public class SquireEntity extends TamableAnimal {
     public InteractionResult mobInteract(Player player, InteractionHand hand) {
         if (!this.level().isClientSide && this.isTame() && this.isOwnedBy(player)) {
             if (player.isShiftKeyDown()) {
-                // Shift+right-click: toggle FOLLOW / STAY
-                byte current = getSquireMode();
-                byte next = (current == MODE_FOLLOW) ? MODE_STAY : MODE_FOLLOW;
-                setSquireMode(next);
-
-                String modeKey = (next == MODE_STAY) ? "squire.mode.stay" : "squire.mode.follow";
-                player.displayClientMessage(Component.translatable(modeKey), true);
-
-                return InteractionResult.SUCCESS;
-            } else {
-                // Right-click: open inventory
+                // Shift+right-click: open inventory
                 if (player instanceof ServerPlayer serverPlayer) {
                     SquireEquipmentContainer equipContainer = new SquireEquipmentContainer(this);
                     serverPlayer.openMenu(new SimpleMenuProvider(
@@ -209,6 +230,15 @@ public class SquireEntity extends TamableAnimal {
                             Component.translatable("container.squire.inventory")
                     ), buf -> buf.writeVarInt(this.getId()));
                 }
+                return InteractionResult.SUCCESS;
+            } else {
+                // Right-click (empty hand): cycle modes FOLLOW → GUARD → STAY → FOLLOW
+                byte current = getSquireMode();
+                byte next = (byte) ((current + 1) % 3);
+                setSquireMode(next);
+
+                player.displayClientMessage(Component.literal("Squire: " + modeName(next)), true);
+
                 return InteractionResult.SUCCESS;
             }
         }
@@ -236,6 +266,7 @@ public class SquireEntity extends TamableAnimal {
         super.addAdditionalSaveData(tag);
         tag.put("SquireInventory", this.inventory.toTag(this.registryAccess()));
         tag.putByte("SquireMode", getSquireMode());
+        tag.putInt("UndyingCooldown", this.undyingCooldown);
         this.progression.save(tag);
     }
 
@@ -248,6 +279,9 @@ public class SquireEntity extends TamableAnimal {
         if (tag.contains("SquireMode")) {
             setSquireMode(tag.getByte("SquireMode"));
         }
+        if (tag.contains("UndyingCooldown")) {
+            this.undyingCooldown = tag.getInt("UndyingCooldown");
+        }
         this.progression.load(tag);
     }
 
@@ -258,11 +292,31 @@ public class SquireEntity extends TamableAnimal {
     @Override
     public void die(DamageSource source) {
         if (!this.level().isClientSide) {
+            // Undying: revive once at 50% HP, then 5-min cooldown (level-gated)
+            if (SquireAbilities.hasUndying(this) && this.undyingCooldown <= 0) {
+                this.setHealth(this.getMaxHealth() * 0.5F);
+                this.undyingCooldown = 6000; // 5 minutes (300s * 20 ticks)
+                this.removeAllEffects();
+                this.addEffect(new MobEffectInstance(MobEffects.REGENERATION, 100, 1, false, true));
+                this.addEffect(new MobEffectInstance(MobEffects.ABSORPTION, 100, 1, false, true));
+                var log = this.getActivityLog();
+                if (log != null) {
+                    log.log("UNDYING", "Revived at 50% HP! Cooldown: 5 minutes");
+                }
+                if (this.getOwner() instanceof ServerPlayer owner) {
+                    owner.sendSystemMessage(Component.literal("Your squire cheated death! (5-min cooldown)"));
+                }
+                return; // Cancel death
+            }
+
             // Drop all inventory contents
             this.inventory.dropAll(this.level(), this.blockPosition());
 
             // Drop a squire badge so the player can resummon
             this.spawnAtLocation(new ItemStack(ModItems.SQUIRE_BADGE.get()));
+
+            // Release any force-loaded chunks
+            SquireChunkLoader.release(this);
 
             // Notify owner with death coordinates
             if (this.getOwner() instanceof ServerPlayer owner) {
@@ -289,12 +343,72 @@ public class SquireEntity extends TamableAnimal {
         if (SquireConfig.godMode.get()) {
             float maxDamage = this.getHealth() - 1.0F;
             if (maxDamage <= 0.0F) {
-                // Already at or below 1 HP — absorb hit but take no damage
                 return super.hurt(source, 0.0F);
             }
-            return super.hurt(source, Math.min(amount, maxDamage));
+            amount = Math.min(amount, maxDamage);
         }
-        return super.hurt(source, amount);
+
+        boolean wasHurt = super.hurt(source, amount);
+
+        // Thorns: reflect 20% melee damage back to attacker (level-gated)
+        if (wasHurt && SquireAbilities.hasThorns(this)
+                && source.getEntity() instanceof LivingEntity attacker
+                && !(attacker instanceof Player p && this.isOwnedBy(p))) {
+            float reflected = amount * 0.2F;
+            if (reflected > 0) {
+                attacker.hurt(this.damageSources().thorns(this), reflected);
+            }
+        }
+
+        return wasHurt;
+    }
+
+    // ================================================================
+    // Ranged combat — RangedAttackMob implementation
+    // ================================================================
+
+    @Override
+    public void performRangedAttack(LivingEntity target, float distanceFactor) {
+        ItemStack arrowStack = findArrowInInventory();
+        if (arrowStack.isEmpty()) return;
+
+        ItemStack weapon = this.getMainHandItem();
+        AbstractArrow arrow = ProjectileUtil.getMobArrow(this, arrowStack, distanceFactor, weapon);
+
+        double dx = target.getX() - this.getX();
+        double dy = target.getY(0.333) - arrow.getY();
+        double dz = target.getZ() - this.getZ();
+        double dist = Math.sqrt(dx * dx + dz * dz);
+
+        float inaccuracy = SquireConfig.rangedInaccuracy.get().floatValue();
+        arrow.shoot(dx, dy + dist * 0.2, dz, 1.6F, inaccuracy);
+        this.level().addFreshEntity(arrow);
+
+        // Consume one arrow
+        arrowStack.shrink(1);
+
+        this.playSound(SoundEvents.ARROW_SHOOT, 1.0F, 1.0F / (this.getRandom().nextFloat() * 0.4F + 0.8F));
+    }
+
+    /** Find arrow stack in squire inventory. */
+    public ItemStack findArrowInInventory() {
+        for (int i = 0; i < this.inventory.getContainerSize(); i++) {
+            ItemStack stack = this.inventory.getItem(i);
+            if (!stack.isEmpty() && stack.getItem() == Items.ARROW) {
+                return stack;
+            }
+        }
+        return ItemStack.EMPTY;
+    }
+
+    /** Check if squire has a bow in mainhand. */
+    public boolean hasBowEquipped() {
+        return this.getMainHandItem().getItem() instanceof BowItem;
+    }
+
+    /** Check if squire has arrows available. */
+    public boolean hasArrows() {
+        return !findArrowInInventory().isEmpty();
     }
 
     // ================================================================
@@ -332,6 +446,37 @@ public class SquireEntity extends TamableAnimal {
                 this.squireAI = new SquireAI(this);
             }
             this.squireAI.tick();
+
+            // Chunk loading: keep squire's chunk loaded during area clear if owner is online
+            SquireChunkLoader.tick(this);
+
+            // Fire resistance (level-gated)
+            if (SquireAbilities.hasFireResistance(this)) {
+                if (!this.hasEffect(MobEffects.FIRE_RESISTANCE)) {
+                    // 12 seconds, re-applied every tick cycle so it never expires
+                    this.addEffect(new MobEffectInstance(MobEffects.FIRE_RESISTANCE, 240, 0, false, false));
+                }
+            }
+
+            // Shield blocking (level-gated) — raise shield when targeted by ranged mob
+            if (SquireAbilities.hasShieldBlock(this)
+                    && SquireEquipmentHelper.isShield(this.getOffhandItem())) {
+                LivingEntity target = this.getTarget();
+                boolean shouldBlock = target != null && target.isAlive()
+                        && target instanceof net.minecraft.world.entity.monster.RangedAttackMob
+                        && this.distanceToSqr(target) > 16.0; // >4 blocks away
+                if (shouldBlock && !this.isUsingItem()) {
+                    this.startUsingItem(InteractionHand.OFF_HAND);
+                } else if (!shouldBlock && this.isUsingItem()
+                        && this.getUsedItemHand() == InteractionHand.OFF_HAND) {
+                    this.stopUsingItem();
+                }
+            }
+
+            // Tick undying cooldown
+            if (this.undyingCooldown > 0) {
+                this.undyingCooldown--;
+            }
 
             if (++this.equipCheckTimer >= SquireConfig.equipCheckInterval.get()) {
                 this.equipCheckTimer = 0;

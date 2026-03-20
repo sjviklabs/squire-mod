@@ -2,6 +2,7 @@ package com.sjviklabs.squire.ai.handler;
 
 import com.sjviklabs.squire.config.SquireConfig;
 import com.sjviklabs.squire.entity.SquireEntity;
+import com.sjviklabs.squire.util.SquireAbilities;
 import net.minecraft.core.Holder;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
@@ -60,11 +61,11 @@ public class ProgressionHandler {
         }
     }
 
-    /** Recalculate level from XP and update attribute modifiers. */
+    /** Recalculate level from XP using scaling curve and update attribute modifiers. */
     private void recalculateLevel() {
-        int xpPerLevel = SquireConfig.xpPerLevel.get();
-        int maxLevel = SquireConfig.maxLevel.get();
-        this.currentLevel = Math.min(totalXP / xpPerLevel, maxLevel);
+        int baseXP = SquireConfig.xpPerLevel.get();
+        int max = SquireConfig.maxLevel.get();
+        this.currentLevel = SquireAbilities.calculateLevel(totalXP, baseXP, max);
         applyModifiers();
     }
 
@@ -124,10 +125,9 @@ public class ProgressionHandler {
             CompoundTag prog = tag.getCompound("SquireProgression");
             this.totalXP = prog.getInt("TotalXP");
             int savedLevel = prog.getInt("Level");
-            // Recompute from XP+config, then cap at saved level so config
-            // tightening is respected but loosening doesn't inflate beyond earned
-            int computed = Math.min(totalXP / Math.max(1, SquireConfig.xpPerLevel.get()),
-                    SquireConfig.maxLevel.get());
+            // Recompute from XP+config using scaling curve
+            int computed = SquireAbilities.calculateLevel(totalXP,
+                    SquireConfig.xpPerLevel.get(), SquireConfig.maxLevel.get());
             this.currentLevel = Math.min(savedLevel, computed);
             applyModifiers();
             squire.setSquireLevel(currentLevel);

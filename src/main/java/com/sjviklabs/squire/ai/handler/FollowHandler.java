@@ -27,7 +27,7 @@ public class FollowHandler {
 
     /** Whether the squire should start following (owner is far enough). */
     public boolean shouldFollow() {
-        if (squire.isOrderedToSit()) return false;
+        if (!squire.shouldFollowOwner()) return false;
         Player owner = squire.getOwner() instanceof Player p ? p : null;
         if (owner == null || !owner.isAlive() || owner.isSpectator()) return false;
         double dist = SquireConfig.followStartDistance.get();
@@ -36,7 +36,7 @@ public class FollowHandler {
 
     /** Whether the squire should stop following (close enough or invalid). */
     public boolean shouldStop() {
-        if (squire.isOrderedToSit()) return true;
+        if (!squire.shouldFollowOwner()) return true;
         Player owner = squire.getOwner() instanceof Player p ? p : null;
         if (owner == null || !owner.isAlive() || owner.isSpectator()) return true;
         double dist = SquireConfig.followStopDistance.get();

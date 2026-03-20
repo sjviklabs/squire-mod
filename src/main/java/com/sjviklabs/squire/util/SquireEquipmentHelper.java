@@ -8,8 +8,10 @@ import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.ai.attributes.Attribute;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
+import com.sjviklabs.squire.util.SquireAbilities;
 import net.minecraft.world.item.ArmorItem;
 import net.minecraft.world.item.AxeItem;
+import net.minecraft.world.item.BowItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.ShieldItem;
 import net.minecraft.world.item.SwordItem;
@@ -60,6 +62,17 @@ public final class SquireEquipmentHelper {
             return;
         }
 
+        // Bow (only equip if squire has ranged ability and arrows)
+        if (newItem.getItem() instanceof BowItem) {
+            if (SquireAbilities.hasRangedCombat(squire) && squire.hasArrows()) {
+                ItemStack currentMainhand = squire.getItemBySlot(EquipmentSlot.MAINHAND);
+                if (!(currentMainhand.getItem() instanceof BowItem)) {
+                    swapEquipment(squire, EquipmentSlot.MAINHAND, newItem);
+                }
+            }
+            return;
+        }
+
         // Weapon (sword or axe)
         if (newItem.getItem() instanceof SwordItem || newItem.getItem() instanceof AxeItem) {
             ItemStack currentMainhand = squire.getItemBySlot(EquipmentSlot.MAINHAND);
@@ -100,23 +113,41 @@ public final class SquireEquipmentHelper {
         }
 
         // --- Mainhand weapon ---
+        // If squire has ranged ability + arrows, prefer bow. Otherwise best melee weapon.
         {
-            int bestIdx = -1;
-            ItemStack bestWeapon = squire.getItemBySlot(EquipmentSlot.MAINHAND);
+            boolean preferBow = SquireAbilities.hasRangedCombat(squire) && squire.hasArrows();
+            ItemStack currentMainhand = squire.getItemBySlot(EquipmentSlot.MAINHAND);
 
-            for (int i = 0; i < inv.getContainerSize(); i++) {
-                ItemStack candidate = inv.getItem(i);
-                if (candidate.isEmpty()) continue;
-                if (!(candidate.getItem() instanceof SwordItem) && !(candidate.getItem() instanceof AxeItem)) continue;
-                if (isCursed(candidate)) continue;
-                if (isBetterWeapon(candidate, bestWeapon)) {
-                    bestWeapon = candidate;
-                    bestIdx = i;
+            if (preferBow) {
+                // Find a bow in inventory if not already holding one
+                if (!(currentMainhand.getItem() instanceof BowItem)) {
+                    for (int i = 0; i < inv.getContainerSize(); i++) {
+                        ItemStack candidate = inv.getItem(i);
+                        if (!candidate.isEmpty() && candidate.getItem() instanceof BowItem && !isCursed(candidate)) {
+                            swapEquipmentFromSlot(squire, EquipmentSlot.MAINHAND, inv, i);
+                            break;
+                        }
+                    }
                 }
-            }
+            } else {
+                // Standard melee weapon selection
+                int bestIdx = -1;
+                ItemStack bestWeapon = currentMainhand;
 
-            if (bestIdx >= 0) {
-                swapEquipmentFromSlot(squire, EquipmentSlot.MAINHAND, inv, bestIdx);
+                for (int i = 0; i < inv.getContainerSize(); i++) {
+                    ItemStack candidate = inv.getItem(i);
+                    if (candidate.isEmpty()) continue;
+                    if (!(candidate.getItem() instanceof SwordItem) && !(candidate.getItem() instanceof AxeItem)) continue;
+                    if (isCursed(candidate)) continue;
+                    if (isBetterWeapon(candidate, bestWeapon)) {
+                        bestWeapon = candidate;
+                        bestIdx = i;
+                    }
+                }
+
+                if (bestIdx >= 0) {
+                    swapEquipmentFromSlot(squire, EquipmentSlot.MAINHAND, inv, bestIdx);
+                }
             }
         }
 
