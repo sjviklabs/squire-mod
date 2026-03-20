@@ -1,16 +1,23 @@
 name: Deploy to Server
 
+# Requires a self-hosted runner on the LAN with access to LXC 111.
+# If no self-hosted runner is configured, use deploy.sh locally instead.
+
 on:
   workflow_dispatch:
     inputs:
       confirm:
         description: 'Type "deploy" to confirm'
         required: true
+      restart:
+        description: 'Restart the server after deploy?'
+        type: boolean
+        default: true
 
 jobs:
   deploy:
     if: github.event.inputs.confirm == 'deploy'
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -24,33 +31,10 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Build with Gradle
-        run: ./gradlew build
-
-      - name: Extract mod version
-        id: version
-        run: echo "version=$(grep '^mod_version=' gradle.properties | cut -d= -f2)" >> "$GITHUB_OUTPUT"
-
-      - name: Deploy to Minecraft server
-        env:
-          DEPLOY_KEY: ${{ secrets.MC_DEPLOY_KEY }}
-          MC_HOST: ${{ secrets.MC_HOST }}
+      - name: Build and deploy
         run: |
-          mkdir -p ~/.ssh
-          echo "$DEPLOY_KEY" > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
-
-          JAR=$(ls build/libs/squire-*.jar | grep -v sources | head -1)
-          echo "Deploying $JAR to server..."
-
-          # Stop server, deploy jar, start server
-          ssh -o StrictHostKeyChecking=no -i ~/.ssh/deploy_key "$MC_HOST" \
-            "sudo systemctl stop minecraft-stoneblock4"
-
-          scp -o StrictHostKeyChecking=no -i ~/.ssh/deploy_key \
-            "$JAR" "$MC_HOST:/opt/minecraft/stoneblock4/mods/"
-
-          ssh -o StrictHostKeyChecking=no -i ~/.ssh/deploy_key "$MC_HOST" \
-            "sudo systemctl start minecraft-stoneblock4"
-
-          echo "Deployed squire-${{ steps.version.outputs.version }} successfully"
+          if [ "${{ github.event.inputs.restart }}" == "true" ]; then
+            ./deploy.sh --restart
+          else
+            ./deploy.sh
+          fi

@@ -63,13 +63,12 @@ All under `/squire`. Most require op level 2.
 ## Deploy to Server
 
 ```bash
-# Manual deploy (from build machine)
-JAR=$(ls build/libs/squire-*.jar | grep -v sources | head -1)
-scp "$JAR" mc-server:/opt/minecraft/stoneblock4/mods/
-ssh mc-server 'sudo systemctl restart minecraft-stoneblock4'
+# Build + deploy (uses SSH config alias "minecraft" for LXC 111)
+./deploy.sh            # deploy only, no restart
+./deploy.sh --restart  # deploy and restart server
 ```
 
-Or use the GitHub Actions "Deploy to Server" workflow (requires MC_DEPLOY_KEY and MC_HOST secrets).
+GitHub Actions deploy workflow also available (requires self-hosted runner on LAN).
 
 ## Version History
 - v0.2.0 — Abilities, ranged combat, guard mode, area clearing, chunk loading
