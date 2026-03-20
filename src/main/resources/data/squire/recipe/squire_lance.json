@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "  I",
+    " S ",
+    "G  "
+  ],
+  "key": {
+    "I": { "item": "minecraft:iron_ingot" },
+    "S": { "item": "minecraft:stick" },
+    "G": { "item": "minecraft:gold_nugget" }
+  },
+  "result": {
+    "id": "squire:squire_lance",
+    "count": 1
+  }
+}

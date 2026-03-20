@@ -20,19 +20,15 @@ import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.Level;
 
 /**
- * Squire Badge item. Right-click ground to summon a new squire.
+ * Squire's Crest item. Right-click ground to summon a new squire.
  * Right-click air to recall an existing squire (sprint-pathfind to owner).
  * Enforces max squire limit per player. Null-safe for fake players/dispensers.
  */
-public class SquireBadgeItem extends Item {
+public class SquireCrestItem extends Item {
 
-    public SquireBadgeItem(Properties properties) {
+    public SquireCrestItem(Properties properties) {
         super(properties);
     }
-
-    // ------------------------------------------------------------------
-    // Right-click on block: summon squire
-    // ------------------------------------------------------------------
 
     @Override
     public InteractionResult useOn(UseOnContext context) {
@@ -40,22 +36,18 @@ public class SquireBadgeItem extends Item {
         Player player = context.getPlayer();
 
         if (level.isClientSide) return InteractionResult.sidedSuccess(true);
-
-        // Null safety — dispensers and fake players don't get squires
         if (!(player instanceof ServerPlayer serverPlayer)) return InteractionResult.PASS;
 
         ServerLevel serverLevel = (ServerLevel) level;
 
-        // Check squire limit
         int activeCount = countPlayerSquires(serverLevel, serverPlayer);
         int maxSquires = SquireConfig.maxSquiresPerPlayer.get();
         if (activeCount >= maxSquires) {
             serverPlayer.displayClientMessage(
-                    Component.translatable("squire.badge.limit", maxSquires), true);
+                    Component.translatable("squire.crest.limit", maxSquires), true);
             return InteractionResult.FAIL;
         }
 
-        // Spawn at clicked position
         BlockPos pos = context.getClickedPos().relative(context.getClickedFace());
         SquireEntity squire = ModEntities.SQUIRE.get().create(serverLevel);
         if (squire == null) return InteractionResult.FAIL;
@@ -65,20 +57,14 @@ public class SquireBadgeItem extends Item {
         squire.setCustomName(Component.literal("Squire"));
         serverLevel.addFreshEntity(squire);
 
-        // Summon effects
         serverLevel.sendParticles(ParticleTypes.HAPPY_VILLAGER,
                 pos.getX() + 0.5, pos.getY() + 1.0, pos.getZ() + 0.5,
                 10, 0.5, 0.5, 0.5, 0.02);
         level.playSound(null, pos, SoundEvents.PLAYER_LEVELUP, SoundSource.PLAYERS, 0.5F, 1.2F);
 
-        // Consume the badge
         context.getItemInHand().shrink(1);
         return InteractionResult.CONSUME;
     }
-
-    // ------------------------------------------------------------------
-    // Right-click in air: recall existing squire
-    // ------------------------------------------------------------------
 
     @Override
     public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
@@ -93,34 +79,25 @@ public class SquireBadgeItem extends Item {
 
         if (squire == null) {
             serverPlayer.displayClientMessage(
-                    Component.translatable("squire.badge.no_squire"), true);
+                    Component.translatable("squire.crest.no_squire"), true);
             return InteractionResultHolder.fail(stack);
         }
 
-        // If squire is in STAY mode, switch to FOLLOW first
         if (squire.getSquireMode() == SquireEntity.MODE_STAY) {
             squire.setSquireMode(SquireEntity.MODE_FOLLOW);
         }
 
-        // Force aggressive pathfinding toward owner
         squire.getNavigation().moveTo(serverPlayer, 1.3D);
         squire.setSprinting(true);
 
         serverPlayer.displayClientMessage(
-                Component.translatable("squire.badge.recall"), true);
+                Component.translatable("squire.crest.recall"), true);
         level.playSound(null, serverPlayer.blockPosition(), SoundEvents.NOTE_BLOCK_CHIME.value(),
                 SoundSource.PLAYERS, 0.8F, 1.4F);
 
         return InteractionResultHolder.success(stack);
     }
 
-    // ------------------------------------------------------------------
-    // Helpers
-    // ------------------------------------------------------------------
-
-    /**
-     * Count how many living squires this player owns across all dimensions.
-     */
     private int countPlayerSquires(ServerLevel level, ServerPlayer player) {
         int count = 0;
         for (ServerLevel serverLevel : level.getServer().getAllLevels()) {
@@ -133,17 +110,12 @@ public class SquireBadgeItem extends Item {
         return count;
     }
 
-    /**
-     * Find the first living squire owned by this player (same dimension first).
-     */
     private SquireEntity findPlayerSquire(ServerLevel level, ServerPlayer player) {
-        // Check current dimension first
         for (SquireEntity squire : level.getEntities(ModEntities.SQUIRE.get(), e -> true)) {
             if (squire.isAlive() && squire.isOwnedBy(player)) {
                 return squire;
             }
         }
-        // Check other dimensions
         for (ServerLevel serverLevel : level.getServer().getAllLevels()) {
             if (serverLevel == level) continue;
             for (SquireEntity squire : serverLevel.getEntities(ModEntities.SQUIRE.get(), e -> true)) {

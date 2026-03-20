@@ -312,8 +312,8 @@ public class SquireEntity extends TamableAnimal implements RangedAttackMob {
             // Drop all inventory contents
             this.inventory.dropAll(this.level(), this.blockPosition());
 
-            // Drop a squire badge so the player can resummon
-            this.spawnAtLocation(new ItemStack(ModItems.SQUIRE_BADGE.get()));
+            // Drop a squire crest so the player can resummon
+            this.spawnAtLocation(new ItemStack(ModItems.SQUIRE_CREST.get()));
 
             // Release any force-loaded chunks
             SquireChunkLoader.release(this);

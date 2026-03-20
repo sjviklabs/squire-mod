@@ -1,12 +1,13 @@
 {
   "itemGroup.squire": "Squire",
-  "item.squire.squire_badge": "Squire's Badge",
+  "item.squire.squire_badge": "Squire's Crest",
+  "item.squire.squire_lance": "Squire's Lance",
   "entity.squire.squire": "Squire",
   "container.squire.inventory": "Squire's Inventory",
   "squire.mode.stay": "Squire: Stay",
   "squire.mode.follow": "Squire: Follow",
-  "squire.badge.limit": "You already have the maximum number of squires (%s)",
-  "squire.badge.no_squire": "You don't have an active squire",
-  "squire.badge.recall": "Recalling your squire...",
+  "squire.crest.limit": "You already have the maximum number of squires (%s)",
+  "squire.crest.no_squire": "You don't have an active squire",
+  "squire.crest.recall": "Recalling your squire...",
   "squire.death.message": "Your squire has fallen at [%s, %s, %s]!"
 }

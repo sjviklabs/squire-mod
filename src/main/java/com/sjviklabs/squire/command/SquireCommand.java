@@ -9,6 +9,7 @@ import com.sjviklabs.squire.ai.statemachine.SquireAIState;
 import com.sjviklabs.squire.config.SquireConfig;
 import com.sjviklabs.squire.entity.SquireEntity;
 import com.sjviklabs.squire.init.ModEntities;
+import com.sjviklabs.squire.item.SquireLanceItem;
 import com.sjviklabs.squire.util.SquireAbilities;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -320,40 +321,46 @@ public class SquireCommand {
             source.sendFailure(Component.literal("Must be run by a player."));
             return 0;
         }
-        SquireEntity squire = findOwnedSquire(source, player);
+        return previewClearForPlayer(player, from, to);
+    }
+
+    /**
+     * Core preview logic, usable from both the command and the lance item.
+     * Returns volume on success, 0 on failure (with chat feedback to player).
+     */
+    public static int previewClearForPlayer(ServerPlayer player, BlockPos from, BlockPos to) {
+        SquireEntity squire = findOwnedSquireByPlayer(player);
         if (squire == null) {
-            source.sendFailure(Component.literal("You have no active squire."));
+            player.displayClientMessage(Component.literal("You have no active squire."), true);
             return 0;
         }
         SquireAI ai = squire.getSquireAI();
         if (ai == null) {
-            source.sendFailure(Component.literal("Squire AI not initialized yet."));
+            player.displayClientMessage(Component.literal("Squire AI not initialized yet."), true);
             return 0;
         }
 
-        // Validate region size
         int dx = Math.abs(from.getX() - to.getX()) + 1;
         int dy = Math.abs(from.getY() - to.getY()) + 1;
         int dz = Math.abs(from.getZ() - to.getZ()) + 1;
         int volume = dx * dy * dz;
         int maxVolume = SquireConfig.maxClearVolume.get();
         if (volume > maxVolume) {
-            source.sendFailure(Component.literal(
-                    "Area too large: " + volume + " blocks (max " + maxVolume + "). Reduce the region or increase maxClearVolume in config."));
+            player.displayClientMessage(Component.literal(
+                    "Area too large: " + volume + " blocks (max " + maxVolume + ")."), true);
             return 0;
         }
 
-        // Store pending clear and show particle outline
-        long tick = source.getServer().getTickCount();
+        long tick = player.server.getTickCount();
         pendingClears.put(player.getUUID(), new PendingClear(from, to, dx, dy, dz, tick));
 
         if (player.level() instanceof ServerLevel level) {
             spawnOutlineParticles(level, from, to);
         }
 
-        source.sendSuccess(() -> Component.literal(
-                "Clear preview: " + dx + "x" + dy + "x" + dz + " region (" + volume + " blocks max). " +
-                "Particles show boundary (30s). /squire clear confirm to start, /squire clear cancel to abort."), false);
+        player.displayClientMessage(Component.literal(
+                "Clear preview: " + dx + "x" + dy + "x" + dz + " (" + volume + " blocks). " +
+                "/squire clear confirm to start, cancel to abort."), false);
         return volume;
     }
 
@@ -364,9 +371,10 @@ public class SquireCommand {
         }
         PendingClear pending = pendingClears.remove(player.getUUID());
         if (pending == null) {
-            source.sendFailure(Component.literal("No pending clear to confirm. Use /squire clear <from> <to> first."));
+            source.sendFailure(Component.literal("No pending clear to confirm. Use /squire clear <from> <to> or the lance first."));
             return 0;
         }
+        SquireLanceItem.clearPositions(player.getUUID());
         SquireEntity squire = findOwnedSquire(source, player);
         if (squire == null) {
             source.sendFailure(Component.literal("You have no active squire."));
@@ -403,6 +411,7 @@ public class SquireCommand {
         }
 
         boolean hadPending = pendingClears.remove(player.getUUID()) != null;
+        SquireLanceItem.clearPositions(player.getUUID());
 
         // Also stop active area clear if running
         SquireEntity squire = findOwnedSquire(source, player);
@@ -515,12 +524,27 @@ public class SquireCommand {
     // ------------------------------------------------------------------
 
     /**
-     * Find the first squire owned by the given player.
+     * Find the first squire owned by the given player (command context).
      */
     private static SquireEntity findOwnedSquire(CommandSourceStack source, ServerPlayer player) {
         for (SquireEntity squire : findAllSquires(source)) {
             if (player.getUUID().equals(squire.getOwnerUUID())) {
                 return squire;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Find the first squire owned by the given player (no command context needed).
+     * Used by lance item and other non-command callers.
+     */
+    static SquireEntity findOwnedSquireByPlayer(ServerPlayer player) {
+        for (ServerLevel level : player.server.getAllLevels()) {
+            for (SquireEntity squire : level.getEntities(ModEntities.SQUIRE.get(), e -> true)) {
+                if (squire.isAlive() && player.getUUID().equals(squire.getOwnerUUID())) {
+                    return squire;
+                }
             }
         }
         return null;
