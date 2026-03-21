@@ -37,6 +37,10 @@ public class MiningHandler {
     private int lastCrackStage;     // 0-9 for destroy progress overlay
     private final LinkedList<BlockPos> blockQueue = new LinkedList<>();
     private boolean areaClearing = false;
+    private int approachTicks;          // ticks spent trying to reach current target
+    private double lastApproachDistSq;  // distance last time we checked for progress
+    private int stuckTicks;             // ticks with no progress toward target
+    private static final int STUCK_TIMEOUT = 100;  // 5 seconds with no progress = stuck
 
     public MiningHandler(SquireEntity squire) {
         this.squire = squire;
@@ -47,6 +51,9 @@ public class MiningHandler {
         this.targetPos = pos;
         this.breakProgress = 0.0F;
         this.lastCrackStage = -1;
+        this.approachTicks = 0;
+        this.stuckTicks = 0;
+        this.lastApproachDistSq = Double.MAX_VALUE;
     }
 
     /**
@@ -160,6 +167,35 @@ public class MiningHandler {
             // Select best tool before starting to break
             SquireEquipmentHelper.selectBestTool(s, state);
             return SquireAIState.MINING_BREAK;
+        }
+
+        // Stuck detection: if not making progress toward target, count up
+        approachTicks++;
+        double distSq = s.distanceToSqr(targetPos.getX() + 0.5, targetPos.getY() + 0.5, targetPos.getZ() + 0.5);
+        if (distSq < lastApproachDistSq - 0.1) {
+            // Making progress — reset stuck counter
+            stuckTicks = 0;
+            lastApproachDistSq = distSq;
+        } else {
+            stuckTicks++;
+        }
+
+        if (stuckTicks >= STUCK_TIMEOUT) {
+            var log = s.getActivityLog();
+            if (log != null) {
+                log.log("MINE", "Can't reach block at " + targetPos.toShortString() + ", skipping");
+            }
+            // Area clearing: skip to next reachable block
+            if (areaClearing) {
+                BlockPos next = popNextValid(s);
+                if (next != null) {
+                    setTarget(next);
+                    return SquireAIState.MINING_APPROACH;
+                }
+                finalizeAreaClear(s);
+            }
+            clearTarget();
+            return SquireAIState.IDLE;
         }
 
         return SquireAIState.MINING_APPROACH;
