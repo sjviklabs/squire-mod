@@ -6,7 +6,7 @@ set -euo pipefail
 #   server: minecolonies (default), stoneblock4, all
 #   --restart: restart the server(s) after deploy
 
-MC_HOST="minecraft"  # SSH config alias (192.168.10.36)
+MC_HOST="minecraft"  # SSH config alias — must point to 192.168.10.36
 CLIENT_DIR="$LOCALAPPDATA/.ftba/instances/minecolonies official/mods"
 
 declare -A SERVERS=(
