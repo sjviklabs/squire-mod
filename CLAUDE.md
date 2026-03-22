@@ -62,7 +62,7 @@ All under `/squire`. Most require op level 2.
 
 ## Deploy
 
-LXC 111 (192.168.10.36) hosts two servers:
+LXC 111 hosts two servers:
 - **MineColonies Official** — port 25566, service `minecraft-minecolonies` (primary)
 - **StoneBlock 4** — port 25565, service `minecraft-stoneblock4`
 
