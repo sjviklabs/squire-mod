@@ -2,6 +2,11 @@
   "itemGroup.squire": "Squire",
   "item.squire.squire_badge": "Squire's Crest",
   "item.squire.squire_lance": "Squire's Lance",
+  "item.squire.squire_shield": "Squire's Shield",
+  "item.squire.squire_helmet": "Squire's Helm",
+  "item.squire.squire_chestplate": "Squire's Chestplate",
+  "item.squire.squire_leggings": "Squire's Greaves",
+  "item.squire.squire_boots": "Squire's Sabatons",
   "entity.squire.squire": "Squire",
   "container.squire.inventory": "Squire's Inventory",
   "squire.mode.stay": "Squire: Stay",
@@ -9,5 +14,6 @@
   "squire.crest.limit": "You already have the maximum number of squires (%s)",
   "squire.crest.no_squire": "You don't have an active squire",
   "squire.crest.recall": "Recalling your squire...",
-  "squire.death.message": "Your squire has fallen at [%s, %s, %s]!"
+  "squire.death.message": "Your squire has fallen at [%s, %s, %s]!",
+  "block.squire.signpost": "Patrol Signpost"
 }

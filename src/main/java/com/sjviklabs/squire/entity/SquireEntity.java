@@ -89,6 +89,9 @@ public class SquireEntity extends TamableAnimal implements RangedAttackMob {
     // ---- Undying ability cooldown (ticks until revive is available again) ----
     private int undyingCooldown = 0;
 
+    // ---- Horse UUID (loaded from NBT, applied to MountHandler when AI initializes) ----
+    private java.util.UUID pendingHorseUUID;
+
     // ---- Constructor ----
     public SquireEntity(EntityType<? extends SquireEntity> type, Level level) {
         super(type, level);
@@ -289,6 +292,11 @@ public class SquireEntity extends TamableAnimal implements RangedAttackMob {
         tag.putByte("SquireMode", getSquireMode());
         tag.putBoolean("SlimModel", isSlimModel());
         tag.putInt("UndyingCooldown", this.undyingCooldown);
+        if (this.pendingHorseUUID != null) {
+            tag.putUUID("HorseUUID", this.pendingHorseUUID);
+        } else if (this.squireAI != null && this.squireAI.getMount().getHorseUUID() != null) {
+            tag.putUUID("HorseUUID", this.squireAI.getMount().getHorseUUID());
+        }
         this.progression.save(tag);
     }
 
@@ -306,6 +314,9 @@ public class SquireEntity extends TamableAnimal implements RangedAttackMob {
         }
         if (tag.contains("UndyingCooldown")) {
             this.undyingCooldown = tag.getInt("UndyingCooldown");
+        }
+        if (tag.hasUUID("HorseUUID")) {
+            this.pendingHorseUUID = tag.getUUID("HorseUUID");
         }
         this.progression.load(tag);
     }
@@ -469,6 +480,10 @@ public class SquireEntity extends TamableAnimal implements RangedAttackMob {
             if (this.squireAI == null) {
                 this.activityLog = new SquireActivityLog(this);
                 this.squireAI = new SquireAI(this);
+                // Apply pending horse UUID from NBT
+                if (this.pendingHorseUUID != null) {
+                    this.squireAI.getMount().setHorseUUID(this.pendingHorseUUID);
+                }
             }
             this.squireAI.tick();
 
@@ -501,6 +516,13 @@ public class SquireEntity extends TamableAnimal implements RangedAttackMob {
             // Tick undying cooldown
             if (this.undyingCooldown > 0) {
                 this.undyingCooldown--;
+            }
+
+            // Squire armor set bonus: Regen I every 10 seconds when all 4 pieces equipped
+            if (this.tickCount % 200 == 0
+                    && this.getHealth() < this.getMaxHealth()
+                    && com.sjviklabs.squire.item.SquireArmorItem.isFullSquireArmor(this)) {
+                this.addEffect(new MobEffectInstance(MobEffects.REGENERATION, 100, 0, false, false));
             }
 
             if (++this.equipCheckTimer >= SquireConfig.equipCheckInterval.get()) {

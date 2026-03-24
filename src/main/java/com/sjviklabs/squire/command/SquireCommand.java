@@ -165,6 +165,32 @@ public class SquireCommand {
                                 .executes(ctx -> setAppearance(ctx.getSource(), StringArgumentType.getString(ctx, "style")))
                         )
                 )
+                .then(Commands.literal("mount")
+                        .executes(ctx -> orderMount(ctx.getSource()))
+                )
+                .then(Commands.literal("dismount")
+                        .executes(ctx -> orderDismount(ctx.getSource()))
+                )
+                .then(Commands.literal("store")
+                        .executes(ctx -> orderStore(ctx.getSource(), null))
+                        .then(Commands.argument("pos", BlockPosArgument.blockPos())
+                                .executes(ctx -> orderStore(ctx.getSource(), BlockPosArgument.getLoadedBlockPos(ctx, "pos")))
+                        )
+                )
+                .then(Commands.literal("fetch")
+                        .executes(ctx -> orderFetch(ctx.getSource(), null))
+                        .then(Commands.argument("item", StringArgumentType.word())
+                                .executes(ctx -> orderFetch(ctx.getSource(), StringArgumentType.getString(ctx, "item")))
+                        )
+                )
+                .then(Commands.literal("patrol")
+                        .then(Commands.literal("stop")
+                                .executes(ctx -> stopPatrol(ctx.getSource()))
+                        )
+                        .then(Commands.argument("pos", BlockPosArgument.blockPos())
+                                .executes(ctx -> startGuardPatrol(ctx.getSource(), BlockPosArgument.getLoadedBlockPos(ctx, "pos")))
+                        )
+                )
         );
     }
 
@@ -603,6 +629,148 @@ public class SquireCommand {
         squire.setSlimModel(slim);
         String label = slim ? "Female (slim arms)" : "Male (wide arms)";
         source.sendSuccess(() -> Component.literal("Squire appearance: " + label), false);
+        return 1;
+    }
+
+    // ------------------------------------------------------------------
+    // /squire mount / dismount
+    // ------------------------------------------------------------------
+
+    private static int orderMount(CommandSourceStack source) {
+        if (!(source.getEntity() instanceof ServerPlayer player)) {
+            source.sendFailure(Component.literal("Must be run by a player."));
+            return 0;
+        }
+        SquireEntity squire = findOwnedSquire(source, player);
+        if (squire == null) {
+            source.sendFailure(Component.literal("You have no active squire."));
+            return 0;
+        }
+        SquireAI ai = squire.getSquireAI();
+        if (ai == null) return 0;
+
+        if (ai.getMount().isMounted()) {
+            source.sendFailure(Component.literal("Squire is already mounted."));
+            return 0;
+        }
+        if (ai.getMount().orderMount()) {
+            ai.getMachine().forceState(SquireAIState.MOUNTING);
+            source.sendSuccess(() -> Component.literal("Squire is mounting up."), false);
+            return 1;
+        }
+        source.sendFailure(Component.literal("No saddled horse found nearby."));
+        return 0;
+    }
+
+    private static int orderDismount(CommandSourceStack source) {
+        if (!(source.getEntity() instanceof ServerPlayer player)) {
+            source.sendFailure(Component.literal("Must be run by a player."));
+            return 0;
+        }
+        SquireEntity squire = findOwnedSquire(source, player);
+        if (squire == null) {
+            source.sendFailure(Component.literal("You have no active squire."));
+            return 0;
+        }
+        SquireAI ai = squire.getSquireAI();
+        if (ai == null) return 0;
+
+        ai.getMount().orderDismount();
+        source.sendSuccess(() -> Component.literal("Squire dismounted."), false);
+        return 1;
+    }
+
+    // ------------------------------------------------------------------
+    // /squire store / fetch
+    // ------------------------------------------------------------------
+
+    private static int orderStore(CommandSourceStack source, BlockPos pos) {
+        if (!(source.getEntity() instanceof ServerPlayer player)) {
+            source.sendFailure(Component.literal("Must be run by a player."));
+            return 0;
+        }
+        SquireEntity squire = findOwnedSquire(source, player);
+        if (squire == null) {
+            source.sendFailure(Component.literal("You have no active squire."));
+            return 0;
+        }
+        SquireAI ai = squire.getSquireAI();
+        if (ai == null) return 0;
+
+        if (!ai.getChest().setTarget(pos, com.sjviklabs.squire.ai.handler.ChestHandler.ChestAction.STORE, null)) {
+            int level = SquireConfig.abilityChestDepositLevel.get();
+            source.sendFailure(Component.literal(
+                    SquireAbilities.hasChestDeposit(squire) ? "No chest found nearby." : "Squire needs level " + level + " for chest interaction."));
+            return 0;
+        }
+        ai.getMachine().forceState(SquireAIState.CHEST_APPROACH);
+        source.sendSuccess(() -> Component.literal("Squire is depositing items."), false);
+        return 1;
+    }
+
+    private static int orderFetch(CommandSourceStack source, String filter) {
+        if (!(source.getEntity() instanceof ServerPlayer player)) {
+            source.sendFailure(Component.literal("Must be run by a player."));
+            return 0;
+        }
+        SquireEntity squire = findOwnedSquire(source, player);
+        if (squire == null) {
+            source.sendFailure(Component.literal("You have no active squire."));
+            return 0;
+        }
+        SquireAI ai = squire.getSquireAI();
+        if (ai == null) return 0;
+
+        if (!ai.getChest().setTarget(null, com.sjviklabs.squire.ai.handler.ChestHandler.ChestAction.FETCH, filter)) {
+            int level = SquireConfig.abilityChestDepositLevel.get();
+            source.sendFailure(Component.literal(
+                    SquireAbilities.hasChestDeposit(squire) ? "No chest found nearby." : "Squire needs level " + level + " for chest interaction."));
+            return 0;
+        }
+        ai.getMachine().forceState(SquireAIState.CHEST_APPROACH);
+        String msg = filter != null ? "Squire is fetching " + filter + "." : "Squire is fetching items.";
+        source.sendSuccess(() -> Component.literal(msg), false);
+        return 1;
+    }
+
+    // ------------------------------------------------------------------
+    // /squire patrol
+    // ------------------------------------------------------------------
+
+    private static int startGuardPatrol(CommandSourceStack source, BlockPos pos) {
+        if (!(source.getEntity() instanceof ServerPlayer player)) {
+            source.sendFailure(Component.literal("Must be run by a player."));
+            return 0;
+        }
+        SquireEntity squire = findOwnedSquire(source, player);
+        if (squire == null) {
+            source.sendFailure(Component.literal("You have no active squire."));
+            return 0;
+        }
+        SquireAI ai = squire.getSquireAI();
+        if (ai == null) return 0;
+
+        ai.getPatrol().startGuard(pos);
+        ai.getMachine().forceState(SquireAIState.PATROL_WALK);
+        source.sendSuccess(() -> Component.literal("Squire guarding position " + pos.toShortString() + "."), false);
+        return 1;
+    }
+
+    private static int stopPatrol(CommandSourceStack source) {
+        if (!(source.getEntity() instanceof ServerPlayer player)) {
+            source.sendFailure(Component.literal("Must be run by a player."));
+            return 0;
+        }
+        SquireEntity squire = findOwnedSquire(source, player);
+        if (squire == null) {
+            source.sendFailure(Component.literal("You have no active squire."));
+            return 0;
+        }
+        SquireAI ai = squire.getSquireAI();
+        if (ai == null) return 0;
+
+        ai.getPatrol().stopPatrol();
+        source.sendSuccess(() -> Component.literal("Squire patrol stopped."), false);
         return 1;
     }
 

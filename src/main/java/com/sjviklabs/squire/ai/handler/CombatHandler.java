@@ -10,6 +10,7 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.BowItem;
+import com.sjviklabs.squire.item.SquireLanceItem;
 
 /**
  * Handles combat approach, attack cooldown, leash distance, and reach calculation.
@@ -86,6 +87,15 @@ public class CombatHandler {
             boolean hitLanded = s.doHurtTarget(target);
             recalculateAttackCooldown();
             if (hitLanded) {
+                // Mounted lance charge bonus
+                if (s.getMainHandItem().getItem() instanceof SquireLanceItem) {
+                    float chargeBonus = SquireLanceItem.getLanceChargeBonus(s);
+                    if (chargeBonus > 0) {
+                        target.hurt(s.damageSources().mobAttack(s), chargeBonus);
+                        s.playSound(SoundEvents.PLAYER_ATTACK_CRIT, 1.2F, 0.8F);
+                    }
+                }
+
                 // Melee hit sound — strong attack sweep
                 s.playSound(SoundEvents.PLAYER_ATTACK_STRONG, 1.0F,
                         s.level().getRandom().nextFloat() * 0.1F + 0.9F);
@@ -220,6 +230,15 @@ public class CombatHandler {
     }
 
     private double getAttackReachSq(LivingEntity target) {
+        // Mounted lance: 6.0 block reach
+        if (squire.isPassenger() && squire.getMainHandItem().getItem() instanceof SquireLanceItem) {
+            return 6.0 * 6.0;
+        }
+        // On-foot lance: 4.5 reach (handled by ENTITY_INTERACTION_RANGE attribute on the item)
+        // but AI needs to know the reach for approach distance
+        if (squire.getMainHandItem().getItem() instanceof SquireLanceItem) {
+            return 4.5 * 4.5;
+        }
         double width = squire.getBbWidth();
         return width * 2.0D * width * 2.0D + target.getBbWidth();
     }

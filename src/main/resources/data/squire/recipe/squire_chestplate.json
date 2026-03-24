@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "L L",
+    "IGI",
+    "III"
+  ],
+  "key": {
+    "I": {"item": "minecraft:iron_ingot"},
+    "G": {"item": "minecraft:gold_ingot"},
+    "L": {"item": "minecraft:leather"}
+  },
+  "result": {
+    "id": "squire:squire_chestplate",
+    "count": 1
+  }
+}

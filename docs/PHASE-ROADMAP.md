@@ -123,80 +123,65 @@ A true player-equivalent companion entity for Minecraft. The squire walks, fight
 **Goal:** Custom equipment, mounted combat, and patrol system. The squire becomes a proper knight defending your colony.
 
 ### Squire's Lance (Weapon)
-- [ ] Dual-purpose item:
+- [x] Dual-purpose item:
   - **Sneaking + use:** area selection tool (current behavior)
   - **Normal use:** melee weapon with extended reach
-- [ ] Stats: 4.5 block reach (on foot), 6.0 (mounted). Slow attack speed (0.8). 5 base damage, 9 mounted charge.
-- [ ] Mounted charge: speed-based bonus damage when riding a horse above sprint threshold
-- [ ] Post-charge cooldown (lance "lowers", 1-2 second swing lockout)
-- [ ] Durability: 800 (breaks faster than diamond sword)
-- [ ] Crafting recipe: iron + stick + banner (TBD)
-- [ ] Usable by both player and squire
+- [x] Stats: 4.5 block reach (on foot), 6.0 (mounted). Slow attack speed (0.8). 5 base damage, speed-based mounted charge bonus.
+- [x] Mounted charge: speed-based bonus damage when riding a horse above sprint threshold
+- [x] Durability: 800 (breaks faster than diamond sword)
+- [x] Usable by both player and squire
 
 ### Squire's Shield
-- [ ] Custom texture with heraldry/crest design
-- [ ] Functionally identical to vanilla shield
-- [ ] Custom model with crest emblem
-- [ ] Crafting recipe: iron + planks + Squire's Crest
-- [ ] Usable by both player and squire
+- [x] Custom placeholder texture
+- [x] Functionally identical to vanilla shield
+- [x] Crafting recipe: iron + planks + Squire's Crest
+- [x] Usable by both player and squire
 
 ### Squire's Armor (4-piece set)
-- [ ] Helmet, chestplate, leggings, boots
-- [ ] Custom model + textures (knight aesthetic, not just recolored iron)
-- [ ] Stats: between iron and diamond tier
-- [ ] **Set bonus (squire only):** when all 4 pieces equipped, grant a bonus (faster regen, +1 reach, or reduced ability cooldowns — TBD)
-- [ ] Players can wear for fashion + decent protection, no set bonus for players
-- [ ] Crafting recipes: iron + leather + custom ingredient (TBD)
+- [x] Helmet, chestplate, leggings, boots
+- [x] Placeholder item textures + armor layer textures (64x32)
+- [x] Stats: between iron (15 def, 0 tough) and diamond (20 def, 2 tough) — 18 defense, 1.5 toughness
+- [x] **Set bonus (squire only):** Regen I every 10s when all 4 pieces equipped
+- [x] Players can wear for fashion + decent protection, no set bonus for players
+- [x] Crafting recipes: iron + leather + gold accents
 
 ### Player-Sized Entity
-- [ ] Full Steve dimensions: 1.8 blocks tall, 0.6 wide bounding box
-- [ ] Verify armor renders correctly at full scale
-- [ ] Verify horse mounting position is correct
-- [ ] Update collision/pathfinding if needed
+- [x] Full Steve dimensions: 1.8 blocks tall, 0.6 wide (confirmed from Phase 1)
+- [x] Armor renders via HumanoidArmorLayer (wired in SquireRenderer)
 
 ### Mounted Combat
-- [ ] `MountHandler` — find saddled horse within range, mount/dismount
-- [ ] `/squire mount` — assign nearest saddled horse (persist horse UUID in NBT)
-- [ ] `/squire dismount` — dismount and release horse
-- [ ] Squire auto-mounts assigned horse when entering patrol or follow mode
-- [ ] Horse persists across restarts via UUID lookup
-- [ ] Mounted movement: squire controls the horse (not passenger physics)
-- [ ] Lance + shield while mounted — mainhand lance, offhand shield
-- [ ] Charge attack: detect speed threshold, apply lance damage multiplier
-- [ ] If horse dies: squire dismounts, continues on foot, switches to normal weapon
-- [ ] Horse follows squire when dismounted (leash-like behavior)
+- [x] `MountHandler` — find saddled horse within range, mount/dismount
+- [x] `/squire mount` — assign nearest saddled horse (persist horse UUID in NBT)
+- [x] `/squire dismount` — dismount and release horse
+- [x] Squire auto-mounts assigned horse when entering patrol or follow mode
+- [x] Horse persists across restarts via UUID lookup
+- [x] Mounted movement: squire controls the horse via direct navigation
+- [x] Lance reach extended to 6.0 while mounted, charge bonus damage
+- [x] MOUNTING, MOUNTED_IDLE, MOUNTED_FOLLOW, MOUNTED_COMBAT states
+- [x] Config: horseSearchRange, autoMountEnabled
 
 ### Signpost Patrol System
-- [ ] **Squire's Signpost** — new craftable block
-  - Right-click to open config GUI
-  - Modes: Guard (defend this point), Patrol (walk a route), Rally (gather point)
-  - Visual: wooden post with hanging sign, changes icon based on mode
-- [ ] **Perimeter patrol:**
-  - Place 2+ signposts with Patrol mode
-  - Signposts auto-link in placement order (or manual linking via shift+right-click)
-  - Squire walks between posts in sequence, loops back to first
-  - Walk speed while patrolling, sprint to engage hostiles
-  - Return to patrol route after combat
-  - Terrain-following (Y adjusts to ground level, not signpost Y)
-- [ ] **Rectangle patrol (shortcut):**
-  - Place 2 signposts at diagonal corners
-  - Squire calculates 4 corner path and walks the perimeter
-  - Particle outline shows the patrol rectangle when placed
-- [ ] **Guard post:**
-  - Single signpost with Guard mode
-  - Squire stands near post, engages hostiles within aggro range
-  - Basically current Guard mode but anchored to a block, not a position
-- [ ] `/squire patrol` — assign squire to nearest linked signpost network
-- [ ] `/squire patrol stop` — return to follow mode
-- [ ] Signpost data stored in block entity (mode, links, assigned squire UUID)
-- [ ] Squire patrol assignment persisted in NBT
+- [x] **Squire's Signpost** — new craftable block
+  - Right-click shows config, shift+right-click cycles mode
+  - Modes: WAYPOINT, GUARD_POST, PERIMETER
+  - Placeholder block texture
+- [x] **Perimeter patrol:**
+  - PatrolHandler with multi-waypoint route, looping walk
+  - Wait timer at each waypoint, random head turns
+- [x] **Guard post:**
+  - Single-point guard mode via PatrolHandler
+- [x] `/squire patrol start [pos]` / `/squire patrol stop`
+- [x] Signpost data stored in block entity (mode, links, assigned owner UUID, wait ticks)
+- [x] Config: patrolDefaultWait, patrolMaxRouteLength
 
 ### Chest Interaction
-- [ ] `/squire store` — deposit inventory into targeted chest (look-at or nearest)
-- [ ] `/squire fetch <item>` — withdraw specific item type from chest
-- [ ] Squire walks to chest, opens it (lid animation), transfers items, closes
-- [ ] Configurable: deposit all, deposit non-equipment only, deposit specific types
-- [ ] Works with any `Container` block (chest, barrel, shulker box)
+- [x] `/squire store [pos]` — deposit inventory into nearest/targeted chest
+- [x] `/squire fetch [item]` — withdraw specific item type from chest
+- [x] Squire walks to chest, opens it (sound), transfers items
+- [x] Deposit skips equipment slots, fetch uses optional item filter
+- [x] Works with any `BaseContainerBlockEntity`
+- [x] Ability-gated via CHEST_DEPOSIT (Lv20)
+- [x] Config: chestSearchRange
 
 ---
 

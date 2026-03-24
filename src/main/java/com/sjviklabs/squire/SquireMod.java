@@ -1,6 +1,8 @@
 package com.sjviklabs.squire;
 
 import com.sjviklabs.squire.config.SquireConfig;
+import com.sjviklabs.squire.init.ModBlockEntities;
+import com.sjviklabs.squire.init.ModBlocks;
 import com.sjviklabs.squire.init.ModEntities;
 import com.sjviklabs.squire.init.ModItems;
 import com.sjviklabs.squire.init.ModMenuTypes;
@@ -26,6 +28,9 @@ public class SquireMod {
         modContainer.registerConfig(ModConfig.Type.COMMON, SquireConfig.SPEC);
 
         ModEntities.ENTITY_TYPES.register(modEventBus);
+        ModBlocks.BLOCKS.register(modEventBus);
+        ModBlockEntities.BLOCK_ENTITIES.register(modEventBus);
+        ModItems.ARMOR_MATERIALS.register(modEventBus);
         ModItems.ITEMS.register(modEventBus);
         ModItems.CREATIVE_MODE_TABS.register(modEventBus);
         ModMenuTypes.MENUS.register(modEventBus);

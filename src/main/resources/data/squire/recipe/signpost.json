@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    " S ",
+    " F ",
+    " F "
+  ],
+  "key": {
+    "S": {"item": "minecraft:oak_sign"},
+    "F": {"item": "minecraft:oak_fence"}
+  },
+  "result": {
+    "id": "squire:signpost",
+    "count": 2
+  }
+}

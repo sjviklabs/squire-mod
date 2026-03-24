@@ -15,6 +15,12 @@ public enum SquireAIState {
     COMBAT_ATTACK,    // Phase 2: separate state when in melee range
     COMBAT_RANGED,    // Phase 2: ranged bow combat at distance
 
+    // Mount layer (Phase 4)
+    MOUNTING,           // Walking toward horse to mount
+    MOUNTED_IDLE,       // Sitting on horse, idle
+    MOUNTED_FOLLOW,     // Horse following owner
+    MOUNTED_COMBAT,     // Horse approaching combat target
+
     // Follow layer
     FOLLOWING_OWNER,
     SITTING,
@@ -25,6 +31,14 @@ public enum SquireAIState {
     PLACING_APPROACH,
     PLACING_BLOCK,
     PICKING_UP_ITEM,
+
+    // Chest interaction (Phase 4)
+    CHEST_APPROACH,
+    CHEST_INTERACT,
+
+    // Patrol (Phase 4)
+    PATROL_WALK,
+    PATROL_WAIT,
 
     // Utility (lowest priority — Phase 2)
     LOOKING_AROUND,

@@ -1,17 +1,25 @@
 package com.sjviklabs.squire.item;
 
+import com.sjviklabs.squire.SquireMod;
 import com.sjviklabs.squire.command.SquireCommand;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.InteractionResultHolder;
+import net.minecraft.world.entity.EquipmentSlotGroup;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.ai.attributes.AttributeModifier;
+import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.entity.animal.horse.AbstractHorse;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.component.ItemAttributeModifiers;
 import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.Level;
 
@@ -20,18 +28,38 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * Squire's Lance — area selection tool for clear commands.
+ * Squire's Lance — dual-purpose item.
  * <ul>
- *   <li>Right-click block: set pos1</li>
- *   <li>Left-click block: set pos2 (handled in {@link SquireLanceEvents})</li>
- *   <li>Shift+right-click air: trigger clear preview</li>
- *   <li>Right-click air (no shift): show current pos1/pos2 status</li>
+ *   <li><b>Sneaking + right-click block:</b> set pos1 (area selection)</li>
+ *   <li><b>Sneaking + left-click block:</b> set pos2 (area selection)</li>
+ *   <li><b>Sneaking + right-click air:</b> trigger clear preview</li>
+ *   <li><b>Normal use:</b> melee weapon with extended 4.5 block reach</li>
  * </ul>
+ * When mounted on a horse at sprint speed, deals bonus charge damage.
  */
 public class SquireLanceItem extends Item {
 
     private static final Map<UUID, BlockPos> pos1Map = new HashMap<>();
     private static final Map<UUID, BlockPos> pos2Map = new HashMap<>();
+
+    /** Creates the weapon attribute modifiers for the lance. */
+    public static ItemAttributeModifiers createAttributes() {
+        return ItemAttributeModifiers.builder()
+                .add(Attributes.ATTACK_DAMAGE,
+                        new AttributeModifier(BASE_ATTACK_DAMAGE_ID, 5.0,
+                                AttributeModifier.Operation.ADD_VALUE),
+                        EquipmentSlotGroup.MAINHAND)
+                .add(Attributes.ATTACK_SPEED,
+                        new AttributeModifier(BASE_ATTACK_SPEED_ID, -3.2,
+                                AttributeModifier.Operation.ADD_VALUE),
+                        EquipmentSlotGroup.MAINHAND)
+                .add(Attributes.ENTITY_INTERACTION_RANGE,
+                        new AttributeModifier(
+                                ResourceLocation.fromNamespaceAndPath(SquireMod.MODID, "lance_reach"),
+                                1.5, AttributeModifier.Operation.ADD_VALUE),
+                        EquipmentSlotGroup.MAINHAND)
+                .build();
+    }
 
     public SquireLanceItem(Properties properties) {
         super(properties);
@@ -41,6 +69,9 @@ public class SquireLanceItem extends Item {
     public InteractionResult useOn(UseOnContext context) {
         Level level = context.getLevel();
         Player player = context.getPlayer();
+
+        // Only do area selection when sneaking
+        if (player == null || !player.isShiftKeyDown()) return InteractionResult.PASS;
 
         if (level.isClientSide) return InteractionResult.sidedSuccess(true);
         if (!(player instanceof ServerPlayer serverPlayer)) return InteractionResult.PASS;
@@ -64,15 +95,14 @@ public class SquireLanceItem extends Item {
     public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
         ItemStack stack = player.getItemInHand(hand);
 
+        // Only do area selection when sneaking
+        if (!player.isShiftKeyDown()) return InteractionResultHolder.pass(stack);
+
         if (level.isClientSide || !(player instanceof ServerPlayer serverPlayer)) {
             return InteractionResultHolder.pass(stack);
         }
 
-        if (serverPlayer.isShiftKeyDown()) {
-            return triggerPreview(serverPlayer, stack);
-        } else {
-            return showStatus(serverPlayer, stack);
-        }
+        return triggerPreview(serverPlayer, stack);
     }
 
     private InteractionResultHolder<ItemStack> triggerPreview(ServerPlayer player, ItemStack stack) {
@@ -82,7 +112,7 @@ public class SquireLanceItem extends Item {
 
         if (p1 == null || p2 == null) {
             String missing = p1 == null && p2 == null ? "pos1 and pos2"
-                    : p1 == null ? "pos1 (right-click a block)" : "pos2 (left-click a block)";
+                    : p1 == null ? "pos1 (sneak+right-click a block)" : "pos2 (sneak+left-click a block)";
             player.displayClientMessage(
                     Component.literal("Set " + missing + " first."), true);
             return InteractionResultHolder.fail(stack);
@@ -95,25 +125,23 @@ public class SquireLanceItem extends Item {
         return InteractionResultHolder.fail(stack);
     }
 
-    private InteractionResultHolder<ItemStack> showStatus(ServerPlayer player, ItemStack stack) {
-        UUID uuid = player.getUUID();
-        BlockPos p1 = pos1Map.get(uuid);
-        BlockPos p2 = pos2Map.get(uuid);
+    /**
+     * Calculate bonus charge damage when wielder is mounted on a galloping horse.
+     * Returns 0 if not mounted or not moving fast enough.
+     */
+    public static float getLanceChargeBonus(LivingEntity wielder) {
+        if (!(wielder.getVehicle() instanceof AbstractHorse horse)) return 0f;
+        double speed = horse.getDeltaMovement().horizontalDistance();
+        if (speed < 0.1) return 0f;
+        // ~2-6 bonus damage at gallop speeds
+        return (float) (speed * 10.0);
+    }
 
-        String status;
-        if (p1 == null && p2 == null) {
-            status = "No positions set. Right-click block = pos1, left-click block = pos2.";
-        } else if (p1 != null && p2 == null) {
-            status = "Pos1: (" + p1.getX() + ", " + p1.getY() + ", " + p1.getZ() + ") | Pos2: not set";
-        } else if (p1 == null) {
-            status = "Pos1: not set | Pos2: (" + p2.getX() + ", " + p2.getY() + ", " + p2.getZ() + ")";
-        } else {
-            status = "Pos1: (" + p1.getX() + ", " + p1.getY() + ", " + p1.getZ() + ") | Pos2: (" +
-                    p2.getX() + ", " + p2.getY() + ", " + p2.getZ() + ") — Shift+right-click air to preview";
-        }
-
-        player.displayClientMessage(Component.literal(status), true);
-        return InteractionResultHolder.success(stack);
+    /**
+     * Check if the wielder is mounted (for reach extension in CombatHandler).
+     */
+    public static boolean isWielderMounted(LivingEntity wielder) {
+        return wielder.getVehicle() instanceof AbstractHorse;
     }
 
     // -- Static accessors for events and command cleanup --

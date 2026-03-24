@@ -1,10 +1,13 @@
 package com.sjviklabs.squire.ai.statemachine;
 
 import com.sjviklabs.squire.ai.handler.ChatHandler;
+import com.sjviklabs.squire.ai.handler.ChestHandler;
 import com.sjviklabs.squire.ai.handler.CombatHandler;
 import com.sjviklabs.squire.ai.handler.FollowHandler;
 import com.sjviklabs.squire.ai.handler.ItemHandler;
 import com.sjviklabs.squire.ai.handler.MiningHandler;
+import com.sjviklabs.squire.ai.handler.MountHandler;
+import com.sjviklabs.squire.ai.handler.PatrolHandler;
 import com.sjviklabs.squire.ai.handler.PlacingHandler;
 import com.sjviklabs.squire.ai.handler.SurvivalHandler;
 import com.sjviklabs.squire.ai.handler.TorchHandler;
@@ -36,6 +39,9 @@ public class SquireAI {
     private final PlacingHandler placing;
     private final TorchHandler torch;
     private final ChatHandler chat;
+    private final MountHandler mount;
+    private final ChestHandler chest;
+    private final PatrolHandler patrol;
     private int idleTicks;
 
     public SquireAI(SquireEntity squire) {
@@ -49,6 +55,9 @@ public class SquireAI {
         this.placing = new PlacingHandler(squire);
         this.torch = new TorchHandler(squire);
         this.chat = new ChatHandler(squire);
+        this.mount = new MountHandler(squire);
+        this.chest = new ChestHandler(squire);
+        this.patrol = new PatrolHandler(squire);
         registerTransitions();
     }
 
@@ -63,6 +72,9 @@ public class SquireAI {
     public MiningHandler getMining() { return mining; }
     public PlacingHandler getPlacing() { return placing; }
     public ChatHandler getChat() { return chat; }
+    public MountHandler getMount() { return mount; }
+    public ChestHandler getChest() { return chest; }
+    public PatrolHandler getPatrol() { return patrol; }
 
     /** Convenience: delegates to SquireEntity's ProgressionHandler. */
     public void awardKillXP() { squire.getProgression().addKillXP(); }
@@ -88,9 +100,12 @@ public class SquireAI {
         registerSittingTransitions();
         registerCombatTransitions();
         registerEatingTransitions();
+        registerMountTransitions();
         registerFollowTransitions();
         registerMiningTransitions();
         registerPlacingTransitions();
+        registerChestTransitions();
+        registerPatrolTransitions();
         registerPickupTransitions();
         registerIdleTransitions();
     }
@@ -349,6 +364,170 @@ public class SquireAI {
                 items::hasTarget,
                 items::tick,
                 1, 40
+        ));
+    }
+
+    // ---- Mount (priority 25) ----
+
+    private void registerMountTransitions() {
+        // Auto-mount: if squire has an assigned horse nearby and is idle
+        machine.addTransition(new AITransition(
+                SquireAIState.IDLE,
+                mount::shouldAutoMount,
+                s -> {
+                    mount.startApproach();
+                    return SquireAIState.MOUNTING;
+                },
+                40, 25
+        ));
+
+        // Mounting approach tick
+        machine.addTransition(new AITransition(
+                SquireAIState.MOUNTING,
+                () -> true,
+                mount::tickApproach,
+                1, 25
+        ));
+
+        // Mounted idle → mounted follow when owner moves away
+        machine.addTransition(new AITransition(
+                SquireAIState.MOUNTED_IDLE,
+                () -> mount.isMounted() && follow.shouldFollow(),
+                s -> SquireAIState.MOUNTED_FOLLOW,
+                10, 30
+        ));
+
+        // Mounted follow tick
+        machine.addTransition(new AITransition(
+                SquireAIState.MOUNTED_FOLLOW,
+                () -> mount.isMounted(),
+                mount::tickMountedFollow,
+                1, 30
+        ));
+
+        // Mounted follow → mounted idle when close to owner
+        machine.addTransition(new AITransition(
+                SquireAIState.MOUNTED_FOLLOW,
+                () -> !mount.isMounted(),
+                s -> SquireAIState.IDLE,
+                1, 29
+        ));
+
+        // Mounted combat entry — global, interrupts any mounted state
+        machine.addTransition(new AITransition(
+                null,
+                () -> {
+                    SquireAIState state = machine.getCurrentState();
+                    if (state == SquireAIState.MOUNTED_COMBAT) return false;
+                    if (!mount.isMounted()) return false;
+                    return combat.hasTarget();
+                },
+                s -> {
+                    combat.start();
+                    chat.onCombatStart();
+                    return SquireAIState.MOUNTED_COMBAT;
+                },
+                1, 10
+        ));
+
+        // Mounted combat tick
+        machine.addTransition(new AITransition(
+                SquireAIState.MOUNTED_COMBAT,
+                () -> mount.isMounted() && combat.hasTarget(),
+                mount::tickMountedCombat,
+                1, 10
+        ));
+
+        // Mounted combat → mounted idle when target dead
+        machine.addTransition(new AITransition(
+                SquireAIState.MOUNTED_COMBAT,
+                () -> !combat.hasTarget(),
+                s -> SquireAIState.MOUNTED_IDLE,
+                1, 9
+        ));
+
+        // Dismounted during any mounted state → IDLE
+        machine.addTransition(new AITransition(
+                SquireAIState.MOUNTED_IDLE,
+                () -> !mount.isMounted(),
+                s -> SquireAIState.IDLE,
+                1, 24
+        ));
+    }
+
+    // ---- Chest interaction (priority 37) ----
+
+    private void registerChestTransitions() {
+        machine.addTransition(new AITransition(
+                SquireAIState.CHEST_APPROACH,
+                () -> !chest.hasTarget(),
+                s -> {
+                    chest.clearTarget();
+                    return SquireAIState.IDLE;
+                },
+                1, 36
+        ));
+
+        machine.addTransition(new AITransition(
+                SquireAIState.CHEST_APPROACH,
+                chest::hasTarget,
+                chest::tickApproach,
+                1, 37
+        ));
+
+        machine.addTransition(new AITransition(
+                SquireAIState.CHEST_INTERACT,
+                () -> !chest.hasTarget(),
+                s -> {
+                    chest.clearTarget();
+                    return SquireAIState.IDLE;
+                },
+                1, 36
+        ));
+
+        machine.addTransition(new AITransition(
+                SquireAIState.CHEST_INTERACT,
+                chest::hasTarget,
+                chest::tickInteract,
+                1, 37
+        ));
+    }
+
+    // ---- Patrol (priority 32) ----
+
+    private void registerPatrolTransitions() {
+        machine.addTransition(new AITransition(
+                SquireAIState.PATROL_WALK,
+                () -> !patrol.isPatrolling(),
+                s -> {
+                    patrol.stopPatrol();
+                    return SquireAIState.IDLE;
+                },
+                1, 31
+        ));
+
+        machine.addTransition(new AITransition(
+                SquireAIState.PATROL_WALK,
+                patrol::isPatrolling,
+                patrol::tickWalk,
+                1, 32
+        ));
+
+        machine.addTransition(new AITransition(
+                SquireAIState.PATROL_WAIT,
+                () -> !patrol.isPatrolling(),
+                s -> {
+                    patrol.stopPatrol();
+                    return SquireAIState.IDLE;
+                },
+                1, 31
+        ));
+
+        machine.addTransition(new AITransition(
+                SquireAIState.PATROL_WAIT,
+                patrol::isPatrolling,
+                patrol::tickWait,
+                1, 32
         ));
     }
 

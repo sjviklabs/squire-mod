@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "IGI",
+    "PPP",
+    " P "
+  ],
+  "key": {
+    "I": {"item": "minecraft:iron_ingot"},
+    "G": {"item": "minecraft:gold_ingot"},
+    "P": {"item": "minecraft:oak_planks"}
+  },
+  "result": {
+    "id": "squire:squire_shield",
+    "count": 1
+  }
+}

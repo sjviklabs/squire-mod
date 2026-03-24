@@ -21,15 +21,16 @@ public class SquireLanceEvents {
 
     @SubscribeEvent
     public static void onLeftClickBlock(PlayerInteractEvent.LeftClickBlock event) {
+        if (!(event.getEntity().getMainHandItem().getItem() instanceof SquireLanceItem)) return;
+
+        // Only intercept for area selection when sneaking — normal left-click = melee attack
+        if (!event.getEntity().isShiftKeyDown()) return;
+
         if (!(event.getEntity() instanceof ServerPlayer player)) {
-            // Client side: cancel to prevent break animation
-            if (event.getEntity().getMainHandItem().getItem() instanceof SquireLanceItem) {
-                event.setCanceled(true);
-            }
+            // Client side: cancel to prevent break animation during area select
+            event.setCanceled(true);
             return;
         }
-
-        if (!(player.getMainHandItem().getItem() instanceof SquireLanceItem)) return;
 
         event.setCanceled(true);
 

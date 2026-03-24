@@ -76,6 +76,17 @@ public final class SquireConfig {
     public static final ModConfigSpec.IntValue torchLightThreshold;
     public static final ModConfigSpec.IntValue torchCooldownTicks;
 
+    // --- Mount ---
+    public static final ModConfigSpec.DoubleValue horseSearchRange;
+    public static final ModConfigSpec.BooleanValue autoMountEnabled;
+
+    // --- Chest interaction ---
+    public static final ModConfigSpec.DoubleValue chestSearchRange;
+
+    // --- Patrol ---
+    public static final ModConfigSpec.IntValue patrolDefaultWait;
+    public static final ModConfigSpec.IntValue patrolMaxRouteLength;
+
     // --- Ranged combat ---
     public static final ModConfigSpec.DoubleValue rangedOptimalRange;
     public static final ModConfigSpec.IntValue rangedCooldownTicks;
@@ -263,6 +274,33 @@ public final class SquireConfig {
         rangedInaccuracy = builder
                 .comment("Arrow inaccuracy. Lower = more accurate. Skeleton uses ~10 on easy, 2 on hard.")
                 .defineInRange("inaccuracy", 6.0, 0.0, 20.0);
+        builder.pop();
+
+        // ---- Mount ----
+        builder.push("mount");
+        horseSearchRange = builder
+                .comment("Range (blocks) to search for saddled horses when mounting.")
+                .defineInRange("horseSearchRange", 16.0, 4.0, 64.0);
+        autoMountEnabled = builder
+                .comment("When true, squire auto-mounts its assigned horse when idle nearby.")
+                .define("autoMountEnabled", true);
+        builder.pop();
+
+        // ---- Chest interaction ----
+        builder.push("chest");
+        chestSearchRange = builder
+                .comment("Range (blocks) to search for nearest chest when no position specified.")
+                .defineInRange("searchRange", 8.0, 2.0, 32.0);
+        builder.pop();
+
+        // ---- Patrol ----
+        builder.push("patrol");
+        patrolDefaultWait = builder
+                .comment("Default ticks to wait at each patrol signpost before moving on. 100 = 5 seconds.")
+                .defineInRange("defaultWaitTicks", 100, 20, 600);
+        patrolMaxRouteLength = builder
+                .comment("Maximum number of signposts in a patrol route.")
+                .defineInRange("maxRouteLength", 20, 2, 50);
         builder.pop();
 
         // ---- Tick intervals ----
