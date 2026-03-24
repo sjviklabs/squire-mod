@@ -229,7 +229,14 @@ public class SquireEntity extends TamableAnimal implements RangedAttackMob {
                                     new SquireMenu(containerId, playerInventory, this.inventory,
                                             equipContainer, this, this.getId()),
                             Component.translatable("container.squire.inventory")
-                    ), buf -> buf.writeVarInt(this.getId()));
+                    ), buf -> {
+                        buf.writeVarInt(this.getId());
+                        buf.writeVarInt(this.getSquireLevel());
+                        buf.writeVarInt(this.getProgression().getTotalXP());
+                        buf.writeFloat(this.getHealth());
+                        buf.writeFloat(this.getMaxHealth());
+                        buf.writeByte(this.getSquireMode());
+                    });
                 }
                 return InteractionResult.SUCCESS;
             } else {

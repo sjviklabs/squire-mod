@@ -15,42 +15,114 @@ import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 
 /**
- * Squire inventory menu with equipment slots (4 armor + offhand + mainhand) and 27-slot general inventory.
+ * Squire inventory menu — player-style layout with level-gated backpack.
  *
- * Layout (196x202 GUI):
- *   Left column (x=7): helmet, chestplate, leggings, boots (y=7,25,43,61), offhand (y=79), mainhand (y=97)
- *   Right area (x=35): 3 rows x 9 cols general inventory (y=7)
- *   Bottom: player inventory (y=122) + hotbar (y=180)
+ * Layout (left to right):
+ *   Entity preview area (51px wide, no slots)
+ *   Armor column: helmet, chest, legs, boots (4 slots)
+ *   Backpack grid: 1-4 rows x 9 cols (9/18/27/36 slots based on level)
+ *   Weapon column: mainhand, offhand (2 slots)
+ *   Bottom: standard player inventory (27 + 9 hotbar)
+ *
+ * Backpack tiers:
+ *   0 (Lv 1-9):   Satchel   — 9 slots  (1 row)
+ *   1 (Lv 10-19): Pack      — 18 slots (2 rows)
+ *   2 (Lv 20-29): Knapsack  — 27 slots (3 rows)
+ *   3 (Lv 30):    War Chest — 36 slots (4 rows)
  */
 public class SquireMenu extends AbstractContainerMenu {
 
-    private static final int SQUIRE_INV_SIZE = 27;
     private static final int EQUIP_SLOT_COUNT = 6; // 4 armor + offhand + mainhand
-    private static final int TOTAL_SQUIRE_SLOTS = SQUIRE_INV_SIZE + EQUIP_SLOT_COUNT;
+
+    // Layout constants
+    private static final int ENTITY_AREA_WIDTH = 51;
+    private static final int ARMOR_COL_X = ENTITY_AREA_WIDTH + 1;   // 52
+    private static final int BACKPACK_X = ARMOR_COL_X + 22;          // 74
+    private static final int WEAPON_COL_X = BACKPACK_X + 9 * 18 + 4; // 240
+    private static final int BACKPACK_Y = 18;
+    private static final int PLAYER_INV_X = 30;
 
     private final Container squireInventory;
     private final Container equipmentContainer;
     private final int squireEntityId;
+    private final int backpackTier;
+    private final int backpackSlots;
+    private final int squireLevel;
+    private final int totalXP;
+    private final float healthCurrent;
+    private final float healthMax;
+    private final byte squireMode;
 
-    // Client constructor (from network) — no entity available, use dummy containers
+    /** Calculate backpack tier from squire level. */
+    public static int tierFromLevel(int level) {
+        if (level >= 30) return 3;
+        if (level >= 20) return 2;
+        if (level >= 10) return 1;
+        return 0;
+    }
+
+    /** Number of backpack slots for a given tier. */
+    public static int slotsForTier(int tier) {
+        return (tier + 1) * 9;
+    }
+
+    /** Number of backpack rows for a given tier. */
+    public static int rowsForTier(int tier) {
+        return tier + 1;
+    }
+
+    // Client constructor (from network)
     public SquireMenu(int containerId, Inventory playerInventory, FriendlyByteBuf buf) {
         this(containerId, playerInventory,
-                new SimpleContainer(SQUIRE_INV_SIZE),
-                new SimpleContainer(EQUIP_SLOT_COUNT),
-                null,
-                buf.readVarInt());
+                null,  // squireInventory — created from tier below
+                null,  // equipContainer
+                null,  // squire entity
+                buf.readVarInt(),  // entityId
+                buf.readVarInt(),  // level
+                buf.readVarInt(),  // totalXP
+                buf.readFloat(),   // health
+                buf.readFloat(),   // maxHealth
+                buf.readByte());   // mode
+    }
+
+    // Internal constructor shared by client and server paths
+    private SquireMenu(int containerId, Inventory playerInventory,
+                       Container squireInventory, Container equipContainer,
+                       SquireEntity squire, int squireEntityId,
+                       int level, int totalXP, float health, float maxHealth, byte mode) {
+        super(ModMenuTypes.SQUIRE_MENU.get(), containerId);
+        this.squireEntityId = squireEntityId;
+        this.squireLevel = level;
+        this.totalXP = totalXP;
+        this.healthCurrent = health;
+        this.healthMax = maxHealth;
+        this.squireMode = mode;
+        this.backpackTier = tierFromLevel(level);
+        this.backpackSlots = slotsForTier(backpackTier);
+
+        // Create containers if not provided (client side)
+        this.squireInventory = squireInventory != null ? squireInventory : new SimpleContainer(backpackSlots);
+        this.equipmentContainer = equipContainer != null ? equipContainer : new SimpleContainer(EQUIP_SLOT_COUNT);
+
+        addEquipmentSlots(squire);
+        addBackpackSlots();
+        addPlayerInventory(playerInventory);
     }
 
     // Server constructor (called from SquireEntity.mobInteract)
     public SquireMenu(int containerId, Inventory playerInventory, Container squireInventory,
                       Container equipContainer, SquireEntity squire, int squireEntityId) {
-        super(ModMenuTypes.SQUIRE_MENU.get(), containerId);
-        this.squireInventory = squireInventory;
-        this.equipmentContainer = equipContainer != null ? equipContainer : new SimpleContainer(EQUIP_SLOT_COUNT);
-        this.squireEntityId = squireEntityId;
-        checkContainerSize(squireInventory, SQUIRE_INV_SIZE);
+        this(containerId, playerInventory, squireInventory, equipContainer, squire, squireEntityId,
+                squire != null ? squire.getSquireLevel() : 0,
+                squire != null ? squire.getProgression().getTotalXP() : 0,
+                squire != null ? squire.getHealth() : 20f,
+                squire != null ? squire.getMaxHealth() : 20f,
+                squire != null ? squire.getSquireMode() : 0);
+    }
 
-        // --- Equipment slots (left column, menu indices 0-4) ---
+    // --- Slot setup ---
+
+    private void addEquipmentSlots(SquireEntity squire) {
         EquipmentSlot[] armorOrder = {
                 EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET
         };
@@ -61,53 +133,97 @@ public class SquireMenu extends AbstractContainerMenu {
                 InventoryMenu.EMPTY_ARMOR_SLOT_BOOTS
         };
 
+        // Armor column (left of backpack)
         for (int i = 0; i < 4; i++) {
+            int slotY = BACKPACK_Y + i * 18;
             if (squire != null) {
                 this.addSlot(new SquireEquipmentSlot(
                         this.equipmentContainer, squire, armorOrder[i],
-                        i, 7, 7 + i * 18, armorIcons[i]));
+                        i, ARMOR_COL_X, slotY, armorIcons[i]));
             } else {
-                this.addSlot(new Slot(this.equipmentContainer, i, 7, 7 + i * 18));
+                this.addSlot(new Slot(this.equipmentContainer, i, ARMOR_COL_X, slotY));
             }
         }
 
-        // Offhand/shield slot (menu index 4)
-        if (squire != null) {
-            this.addSlot(new SquireEquipmentSlot(
-                    this.equipmentContainer, squire, EquipmentSlot.OFFHAND,
-                    4, 7, 79, InventoryMenu.EMPTY_ARMOR_SLOT_SHIELD));
-        } else {
-            this.addSlot(new Slot(this.equipmentContainer, 4, 7, 79));
-        }
-
-        // Mainhand/weapon slot (menu index 5) — below offhand
+        // Mainhand weapon (right of backpack, top)
         if (squire != null) {
             this.addSlot(new SquireEquipmentSlot(
                     this.equipmentContainer, squire, EquipmentSlot.MAINHAND,
-                    5, 7, 97, null));
+                    5, WEAPON_COL_X, BACKPACK_Y, null));
         } else {
-            this.addSlot(new Slot(this.equipmentContainer, 5, 7, 97));
+            this.addSlot(new Slot(this.equipmentContainer, 5, WEAPON_COL_X, BACKPACK_Y));
         }
 
-        // --- Squire general inventory (3 rows x 9, menu indices 6-32) ---
-        for (int row = 0; row < 3; row++) {
-            for (int col = 0; col < 9; col++) {
-                this.addSlot(new Slot(squireInventory, col + row * 9, 35 + col * 18, 7 + row * 18));
-            }
-        }
-
-        // --- Player inventory (3 rows x 9, menu indices 33-59) ---
-        for (int row = 0; row < 3; row++) {
-            for (int col = 0; col < 9; col++) {
-                this.addSlot(new Slot(playerInventory, col + row * 9 + 9, 8 + col * 18, 122 + row * 18));
-            }
-        }
-
-        // --- Player hotbar (menu indices 60-68) ---
-        for (int col = 0; col < 9; col++) {
-            this.addSlot(new Slot(playerInventory, col, 8 + col * 18, 180));
+        // Offhand/shield (right of backpack, below mainhand)
+        if (squire != null) {
+            this.addSlot(new SquireEquipmentSlot(
+                    this.equipmentContainer, squire, EquipmentSlot.OFFHAND,
+                    4, WEAPON_COL_X, BACKPACK_Y + 18, InventoryMenu.EMPTY_ARMOR_SLOT_SHIELD));
+        } else {
+            this.addSlot(new Slot(this.equipmentContainer, 4, WEAPON_COL_X, BACKPACK_Y + 18));
         }
     }
+
+    private void addBackpackSlots() {
+        int rows = rowsForTier(backpackTier);
+        for (int row = 0; row < rows; row++) {
+            for (int col = 0; col < 9; col++) {
+                int idx = col + row * 9;
+                if (idx < squireInventory.getContainerSize()) {
+                    this.addSlot(new Slot(squireInventory, idx, BACKPACK_X + col * 18, BACKPACK_Y + row * 18));
+                }
+            }
+        }
+    }
+
+    private void addPlayerInventory(Inventory playerInventory) {
+        int playerInvY = getPlayerInvY();
+
+        // Player inventory (3 rows x 9)
+        for (int row = 0; row < 3; row++) {
+            for (int col = 0; col < 9; col++) {
+                this.addSlot(new Slot(playerInventory, col + row * 9 + 9,
+                        PLAYER_INV_X + col * 18, playerInvY + row * 18));
+            }
+        }
+
+        // Player hotbar
+        for (int col = 0; col < 9; col++) {
+            this.addSlot(new Slot(playerInventory, col,
+                    PLAYER_INV_X + col * 18, playerInvY + 58));
+        }
+    }
+
+    // --- Layout helpers ---
+
+    /** Y position where player inventory starts, adjusts based on backpack tier. */
+    public int getPlayerInvY() {
+        // 4 rows max for backpack, always show space for 4 rows + gap
+        return BACKPACK_Y + 4 * 18 + 14;
+    }
+
+    /** Total GUI height. */
+    public int getGuiHeight() {
+        return getPlayerInvY() + 3 * 18 + 4 + 18 + 4; // player inv + gap + hotbar + bottom pad
+    }
+
+    /** Total GUI width. */
+    public int getGuiWidth() {
+        return WEAPON_COL_X + 18 + 8; // weapon col + slot width + right pad
+    }
+
+    // --- Accessors for screen rendering ---
+
+    public int getBackpackTier() { return backpackTier; }
+    public int getBackpackSlots() { return backpackSlots; }
+    public int getSquireLevel() { return squireLevel; }
+    public int getTotalXP() { return totalXP; }
+    public float getHealthCurrent() { return healthCurrent; }
+    public float getHealthMax() { return healthMax; }
+    public byte getSquireMode() { return squireMode; }
+    public int getSquireEntityId() { return squireEntityId; }
+
+    // --- Shift-click transfer ---
 
     @Override
     public ItemStack quickMoveStack(Player player, int index) {
@@ -119,15 +235,17 @@ public class SquireMenu extends AbstractContainerMenu {
         ItemStack stack = slot.getItem();
         result = stack.copy();
 
-        if (index < TOTAL_SQUIRE_SLOTS) {
-            // Move from squire (equipment or inventory) to player
-            if (!this.moveItemStackTo(stack, TOTAL_SQUIRE_SLOTS, this.slots.size(), true)) {
+        int totalSquireSlots = EQUIP_SLOT_COUNT + backpackSlots;
+
+        if (index < totalSquireSlots) {
+            // Move from squire to player
+            if (!this.moveItemStackTo(stack, totalSquireSlots, this.slots.size(), true)) {
                 return ItemStack.EMPTY;
             }
         } else {
-            // Move from player — try equipment slots first, then general inventory
+            // Move from player — try equipment first, then backpack
             if (!this.moveItemStackTo(stack, 0, EQUIP_SLOT_COUNT, false)) {
-                if (!this.moveItemStackTo(stack, EQUIP_SLOT_COUNT, TOTAL_SQUIRE_SLOTS, false)) {
+                if (!this.moveItemStackTo(stack, EQUIP_SLOT_COUNT, totalSquireSlots, false)) {
                     return ItemStack.EMPTY;
                 }
             }
