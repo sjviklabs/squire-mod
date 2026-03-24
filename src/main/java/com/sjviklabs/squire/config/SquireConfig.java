@@ -16,6 +16,9 @@ public final class SquireConfig {
     public static final ModConfigSpec.BooleanValue godMode;
     public static final ModConfigSpec.BooleanValue activityLogging;
 
+    // --- Chat lines ---
+    public static final ModConfigSpec.BooleanValue chatLinesEnabled;
+
     // --- Per-player limits ---
     public static final ModConfigSpec.IntValue maxSquiresPerPlayer;
 
@@ -94,6 +97,13 @@ public final class SquireConfig {
         activityLogging = builder
                 .comment("When true, squire AI logs state transitions and actions to logs/latest.log. Use /squire log to view in-game.")
                 .define("activityLogging", true);
+        builder.pop();
+
+        // ---- Chat lines ----
+        builder.push("chat");
+        chatLinesEnabled = builder
+                .comment("When true, squires say contextual flavor text (combat, mining, idle). Owner-only visibility.")
+                .define("chatLinesEnabled", true);
         builder.pop();
 
         // ---- Per-player limits ----

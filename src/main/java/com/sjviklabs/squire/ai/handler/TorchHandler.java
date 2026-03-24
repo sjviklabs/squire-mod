@@ -69,6 +69,9 @@ public class TorchHandler {
 
         cooldown = SquireConfig.torchCooldownTicks.get();
 
+        // Chat line
+        if (squire.getSquireAI() != null) squire.getSquireAI().getChat().onTorchPlaced();
+
         var log = squire.getActivityLog();
         if (log != null) {
             log.log("TORCH", "Placed torch at " + placePos.toShortString()

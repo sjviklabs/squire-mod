@@ -79,6 +79,11 @@ public class ProgressionHandler {
         // Heal to new max on level up
         squire.setHealth(squire.getMaxHealth());
 
+        // Chat line
+        if (squire.getSquireAI() != null) {
+            squire.getSquireAI().getChat().onLevelUp(currentLevel);
+        }
+
         var log = squire.getActivityLog();
         if (log != null) {
             log.log("LEVEL", "Leveled up to Lv." + currentLevel

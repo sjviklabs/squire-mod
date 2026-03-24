@@ -146,6 +146,12 @@ public class SquireCommand {
                                 .executes(ctx -> setMode(ctx.getSource(), StringArgumentType.getString(ctx, "mode")))
                         )
                 )
+                .then(Commands.literal("name")
+                        .then(Commands.argument("name", StringArgumentType.greedyString())
+                                .executes(ctx -> setName(ctx.getSource(), StringArgumentType.getString(ctx, "name")))
+                        )
+                        .executes(ctx -> clearName(ctx.getSource()))
+                )
         );
     }
 
@@ -516,6 +522,44 @@ public class SquireCommand {
         }
         squire.setSquireMode(mode);
         source.sendSuccess(() -> Component.literal("Squire mode set to: " + SquireEntity.modeName(mode)), false);
+        return 1;
+    }
+
+    // ------------------------------------------------------------------
+    // /squire name <text> | /squire name (clear)
+    // ------------------------------------------------------------------
+
+    private static int setName(CommandSourceStack source, String name) {
+        if (!(source.getEntity() instanceof ServerPlayer player)) {
+            source.sendFailure(Component.literal("Must be run by a player."));
+            return 0;
+        }
+        SquireEntity squire = findOwnedSquire(source, player);
+        if (squire == null) {
+            source.sendFailure(Component.literal("You have no active squire."));
+            return 0;
+        }
+        // Strip formatting codes beyond 32 chars
+        String trimmed = name.length() > 32 ? name.substring(0, 32) : name;
+        squire.setCustomName(Component.literal(trimmed));
+        squire.setCustomNameVisible(true);
+        source.sendSuccess(() -> Component.literal("Squire named: " + trimmed), false);
+        return 1;
+    }
+
+    private static int clearName(CommandSourceStack source) {
+        if (!(source.getEntity() instanceof ServerPlayer player)) {
+            source.sendFailure(Component.literal("Must be run by a player."));
+            return 0;
+        }
+        SquireEntity squire = findOwnedSquire(source, player);
+        if (squire == null) {
+            source.sendFailure(Component.literal("You have no active squire."));
+            return 0;
+        }
+        squire.setCustomName(null);
+        squire.setCustomNameVisible(false);
+        source.sendSuccess(() -> Component.literal("Squire name cleared."), false);
         return 1;
     }
 

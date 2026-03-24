@@ -101,8 +101,9 @@ public class CombatHandler {
 
                 var log = s.getActivityLog();
                 if (!target.isAlive()) {
-                    // Kill confirmation — crit sound
+                    // Kill confirmation — crit sound + chat
                     s.playSound(SoundEvents.PLAYER_ATTACK_CRIT, 1.0F, 1.0F);
+                    if (s.getSquireAI() != null) s.getSquireAI().getChat().onKill();
                     s.getProgression().addKillXP();
                     if (log != null) {
                         log.log("COMBAT", "Killed " + target.getType().toShortString()

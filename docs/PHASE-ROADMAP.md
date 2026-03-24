@@ -55,12 +55,12 @@ A true player-equivalent companion entity for Minecraft. The squire walks, fight
 **Goal:** The squire feels alive. Bug fixes, QOL, and immersion features that make people want to keep the squire around.
 
 ### Bug Fixes
-- [ ] **Tool visual during mining** — equip check overwrites tool mid-mine. Skip `runFullEquipCheck` when in MINING states.
-- [ ] **Mining speed parity** — add efficiency enchantment bonus and canHarvestBlock check (30 vs 100 divisor) to match vanilla player break speed.
+- [x] **Tool visual during mining** — equip check overwrites tool mid-mine. Skip `runFullEquipCheck` when in MINING states.
+- [x] **Mining speed parity** — add efficiency enchantment bonus and canHarvestBlock check (30 vs 100 divisor) to match vanilla player break speed.
 
 ### Custom Naming
-- [ ] `/squire name <text>` command
-- [ ] Persist name in NBT, display on nameplate
+- [x] `/squire name <text>` command (max 32 chars)
+- [x] Persist name in NBT (vanilla CustomName), display on nameplate
 - [ ] Color/formatting support (Minecraft formatting codes)
 
 ### Male/Female Appearance
@@ -70,43 +70,51 @@ A true player-equivalent companion entity for Minecraft. The squire walks, fight
 - [ ] PlayerModel `slim` boolean toggle on the renderer
 
 ### Chat Lines (Contextual Flavor)
-- [ ] Triggered on state transitions (already have the hooks):
-  - Combat start: "Hostile ahead!", "I'll handle this."
-  - Low health: "I'm hurting...", "Need food!"
-  - Kill: "Got 'em.", "That's another one."
-  - Mining: "Mining away.", "This rock is tough."
+- [x] Triggered on state transitions via ChatHandler:
+  - Combat start: "Hostile ahead!", "I'll handle this.", etc.
+  - Low health/eating: "I'm hurting...", "Need food!"
+  - Kill: "Got 'em.", "That's another one.", "Target down."
   - Idle (30s+): "...", "Nice day.", "Standing by."
-  - Level up: "I feel stronger!"
-- [ ] Configurable: enable/disable in config, message frequency cap
-- [ ] Owner-only visibility (not global chat spam)
+  - Level up: "I feel stronger! Level X!"
+  - Torch placed: "Getting dark.", "Let me light the way."
+- [x] Configurable: chatLinesEnabled in config, 10s global cooldown
+- [x] Owner-only visibility (system chat, not global)
 
 ### Auto-Torching
-- [ ] Check light level around owner's position while in FOLLOW mode
-- [ ] Place torch from inventory when light < configurable threshold (default 7)
-- [ ] Cooldown between placements (don't carpet-bomb torches)
-- [ ] Configurable: enable/disable, light threshold, placement interval
+- [x] Check light level at squire's position while in IDLE/FOLLOW mode
+- [x] Place torch from inventory when block light <= configurable threshold (default 7)
+- [x] Cooldown between placements (60 ticks / 3s, anti-cluster near existing torches)
+- [x] Configurable: torchLightThreshold, torchCooldownTicks
+- [x] Level-gated via AUTO_TORCH ability (Lv5)
 
 ### Idle Behaviors
-- [ ] Head turning (look at random nearby points)
-- [ ] Occasional sitting after extended idle
-- [ ] Look at owner when owner looks at squire
-- [ ] Resume standing when mode changes or owner moves
+- [x] Head turning (30% chance random look when no player nearby)
+- [x] Occasional sitting after 60s idle (sits down, stands up when interrupted)
+- [x] Look at nearest player within 8 blocks
+- [x] Resume standing when state changes or owner moves
 
 ### Inventory Screen Redesign
-- [ ] Entity preview panel (rendered squire with current gear, rotatable)
-- [ ] Equipment slots on left (armor) and right (weapons) flanking backpack grid
-- [ ] Stats display: HP bar, XP bar, level, current mode, active ability
-- [ ] Locked rows shown as greyed/X'd — visible but inaccessible
+- [x] Entity preview panel (rendered squire with current gear, rotatable)
+- [x] Equipment slots on left (armor) and right (weapons) flanking backpack grid
+- [x] Stats display: HP bar, XP bar, level, current mode
+- [x] Locked rows shown as greyed with "Lv.X" labels — visible but inaccessible
 - [ ] Custom background texture (not vanilla chest skin)
 
 ### Leveled Backpack
-- [ ] Lv1-9: Satchel — 9 slots (1 row). Small belt pouch on 3D model.
-- [ ] Lv10-19: Pack — 18 slots (2 rows). Medium bag on back.
-- [ ] Lv20-29: Knapsack — 27 slots (3 rows). Full backpack, visible on model.
-- [ ] Lv30: War Chest — 36 slots (4 rows). Large chest-pack with bedroll.
+- [x] Lv1-9: Satchel — 9 slots (1 row)
+- [x] Lv10-19: Pack — 18 slots (2 rows)
+- [x] Lv20-29: Knapsack — 27 slots (3 rows)
+- [x] Lv30: War Chest — 36 slots (4 rows)
 - [ ] 3D model via `RenderLayer` — swap based on `backpackTier` synced data
-- [ ] Dynamic `MenuType` with slot count based on current tier
-- [ ] Persist tier + contents in NBT (handle tier upgrades gracefully — don't lose items)
+- [x] Dynamic `MenuType` with slot count based on current tier
+- [x] Persist tier + contents in NBT (handle tier upgrades gracefully — don't lose items)
+
+### Sound Effects
+- [x] Eating: crunch every 4 ticks + burp on finish
+- [x] Combat: `PLAYER_ATTACK_STRONG` on hit, `PLAYER_ATTACK_CRIT` on kill
+- [x] Equipment: `ARMOR_EQUIP_IRON` for armor, `ARMOR_EQUIP_GENERIC` for weapons
+- [x] Ambient: villager "hmm" (25% chance, 0.6 volume)
+- [x] Hurt/death: `PLAYER_HURT`, `PLAYER_DEATH` (from Phase 1)
 
 ---
 

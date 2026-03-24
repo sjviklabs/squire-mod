@@ -1,5 +1,6 @@
 package com.sjviklabs.squire.ai.statemachine;
 
+import com.sjviklabs.squire.ai.handler.ChatHandler;
 import com.sjviklabs.squire.ai.handler.CombatHandler;
 import com.sjviklabs.squire.ai.handler.FollowHandler;
 import com.sjviklabs.squire.ai.handler.ItemHandler;
@@ -34,6 +35,8 @@ public class SquireAI {
     private final MiningHandler mining;
     private final PlacingHandler placing;
     private final TorchHandler torch;
+    private final ChatHandler chat;
+    private int idleTicks;
 
     public SquireAI(SquireEntity squire) {
         this.squire = squire;
@@ -45,6 +48,7 @@ public class SquireAI {
         this.mining = new MiningHandler(squire);
         this.placing = new PlacingHandler(squire);
         this.torch = new TorchHandler(squire);
+        this.chat = new ChatHandler(squire);
         registerTransitions();
     }
 
@@ -58,12 +62,21 @@ public class SquireAI {
     public ItemHandler getItems() { return items; }
     public MiningHandler getMining() { return mining; }
     public PlacingHandler getPlacing() { return placing; }
+    public ChatHandler getChat() { return chat; }
 
     /** Convenience: delegates to SquireEntity's ProgressionHandler. */
     public void awardKillXP() { squire.getProgression().addKillXP(); }
     public void awardMineXP() { squire.getProgression().addMineXP(); }
 
     public void tick() {
+        chat.tick();
+        if (machine.getCurrentState() != SquireAIState.IDLE) {
+            // Stand up from idle sit when entering any active state
+            if (idleTicks > 0 && squire.isInSittingPose() && !squire.isOrderedToSit()) {
+                squire.setInSittingPose(false);
+            }
+            idleTicks = 0;
+        }
         machine.tick(squire);
     }
 
@@ -126,6 +139,7 @@ public class SquireAI {
                 },
                 s -> {
                     combat.start();
+                    chat.onCombatStart();
                     if (combat.shouldUseRanged()) {
                         return SquireAIState.COMBAT_RANGED;
                     }
@@ -162,6 +176,7 @@ public class SquireAI {
                 },
                 s -> {
                     survival.startEating();
+                    chat.onLowHealth();
                     return SquireAIState.EATING;
                 },
                 20, 20
@@ -347,10 +362,29 @@ public class SquireAI {
                     // Auto-torch: place torch if dark (ability-gated, has its own cooldown)
                     torch.tryPlaceTorch();
 
+                    // Idle chat after 30+ seconds of standing around
+                    idleTicks += 20; // this transition runs every 20 ticks
+                    if (idleTicks >= 600) { // 30 seconds
+                        chat.onIdleLong();
+                        idleTicks = 0;
+                    }
+
+                    // Idle sit after 60+ seconds — squire sits down until interrupted
+                    if (idleTicks >= 1200 && !s.isInSittingPose()) {
+                        s.setInSittingPose(true);
+                    }
+
+                    // Look at nearby player, or random head turn
                     Player player = s.level().getNearestPlayer(s, 8.0);
                     if (player != null) {
                         s.getLookControl().setLookAt(player, 10.0F,
                                 (float) s.getMaxHeadXRot());
+                    } else if (s.getRandom().nextFloat() < 0.3F) {
+                        // Random head turn — look at a random point within 8 blocks
+                        double rx = s.getX() + (s.getRandom().nextDouble() - 0.5) * 16.0;
+                        double ry = s.getEyeY() + (s.getRandom().nextDouble() - 0.5) * 4.0;
+                        double rz = s.getZ() + (s.getRandom().nextDouble() - 0.5) * 16.0;
+                        s.getLookControl().setLookAt(rx, ry, rz);
                     }
                     return SquireAIState.IDLE;
                 },
