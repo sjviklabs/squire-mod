@@ -27,9 +27,16 @@ public class SquireRenderer extends HumanoidMobRenderer<SquireEntity, PlayerMode
 
     private static final ResourceLocation TEXTURE =
             ResourceLocation.fromNamespaceAndPath(SquireMod.MODID, "textures/entity/squire.png");
+    private static final ResourceLocation TEXTURE_SLIM =
+            ResourceLocation.fromNamespaceAndPath(SquireMod.MODID, "textures/entity/squire_slim.png");
+
+    private final PlayerModel<SquireEntity> wideModel;
+    private final PlayerModel<SquireEntity> slimModel;
 
     public SquireRenderer(EntityRendererProvider.Context context) {
         super(context, new PlayerModel<>(context.bakeLayer(ModelLayers.PLAYER), false), 0.5F);
+        this.wideModel = this.getModel();
+        this.slimModel = new PlayerModel<>(context.bakeLayer(ModelLayers.PLAYER_SLIM), true);
 
         // Armor layers — inner (leggings) and outer (helmet, chestplate, boots)
         this.addLayer(new HumanoidArmorLayer<>(this,
@@ -39,11 +46,22 @@ public class SquireRenderer extends HumanoidMobRenderer<SquireEntity, PlayerMode
 
         // Held items (main hand weapon, offhand shield)
         this.addLayer(new ItemInHandLayer<>(this, context.getItemInHandRenderer()));
+
+        // Backpack — tier-scaled box on the back
+        this.addLayer(new BackpackLayer(this));
+    }
+
+    @Override
+    public void render(SquireEntity entity, float entityYaw, float partialTick,
+                       PoseStack poseStack, MultiBufferSource bufferSource, int packedLight) {
+        // Swap model based on appearance setting
+        this.model = entity.isSlimModel() ? slimModel : wideModel;
+        super.render(entity, entityYaw, partialTick, poseStack, bufferSource, packedLight);
     }
 
     @Override
     public ResourceLocation getTextureLocation(SquireEntity entity) {
-        return TEXTURE;
+        return entity.isSlimModel() ? TEXTURE_SLIM : TEXTURE;
     }
 
     // Always show name + health bar for tamed squires (vanilla only shows on crosshair hover)

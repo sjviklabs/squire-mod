@@ -68,6 +68,9 @@ public class SquireEntity extends TamableAnimal implements RangedAttackMob {
             SynchedEntityData.defineId(SquireEntity.class, EntityDataSerializers.BOOLEAN);
     private static final EntityDataAccessor<Integer> SQUIRE_LEVEL =
             SynchedEntityData.defineId(SquireEntity.class, EntityDataSerializers.INT);
+    // Appearance: false = wide arms (Steve/male), true = slim arms (Alex/female)
+    private static final EntityDataAccessor<Boolean> SLIM_MODEL =
+            SynchedEntityData.defineId(SquireEntity.class, EntityDataSerializers.BOOLEAN);
 
     public static final byte MODE_FOLLOW = 0;
     public static final byte MODE_STAY = 1;
@@ -119,6 +122,7 @@ public class SquireEntity extends TamableAnimal implements RangedAttackMob {
         builder.define(SQUIRE_MODE, MODE_FOLLOW);
         builder.define(IS_SPRINTING, false);
         builder.define(SQUIRE_LEVEL, 0);
+        builder.define(SLIM_MODEL, false);
     }
 
     public byte getSquireMode() {
@@ -162,6 +166,15 @@ public class SquireEntity extends TamableAnimal implements RangedAttackMob {
 
     public void setSquireLevel(int level) {
         this.entityData.set(SQUIRE_LEVEL, level);
+    }
+
+    /** Whether this squire uses the slim (Alex/female) arm model. */
+    public boolean isSlimModel() {
+        return this.entityData.get(SLIM_MODEL);
+    }
+
+    public void setSlimModel(boolean slim) {
+        this.entityData.set(SLIM_MODEL, slim);
     }
 
     // ================================================================
@@ -274,6 +287,7 @@ public class SquireEntity extends TamableAnimal implements RangedAttackMob {
         super.addAdditionalSaveData(tag);
         tag.put("SquireInventory", this.inventory.toTag(this.registryAccess()));
         tag.putByte("SquireMode", getSquireMode());
+        tag.putBoolean("SlimModel", isSlimModel());
         tag.putInt("UndyingCooldown", this.undyingCooldown);
         this.progression.save(tag);
     }
@@ -286,6 +300,9 @@ public class SquireEntity extends TamableAnimal implements RangedAttackMob {
         }
         if (tag.contains("SquireMode")) {
             setSquireMode(tag.getByte("SquireMode"));
+        }
+        if (tag.contains("SlimModel")) {
+            setSlimModel(tag.getBoolean("SlimModel"));
         }
         if (tag.contains("UndyingCooldown")) {
             this.undyingCooldown = tag.getInt("UndyingCooldown");

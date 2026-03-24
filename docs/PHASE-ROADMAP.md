@@ -61,13 +61,13 @@ A true player-equivalent companion entity for Minecraft. The squire walks, fight
 ### Custom Naming
 - [x] `/squire name <text>` command (max 32 chars)
 - [x] Persist name in NBT (vanilla CustomName), display on nameplate
-- [ ] Color/formatting support (Minecraft formatting codes)
+- [x] Color/formatting support (`&` codes parsed to styled Components)
 
 ### Male/Female Appearance
-- [ ] Two skin textures: wide arms (male) and slim arms (female/Alex model)
-- [ ] `/squire appearance <male|female>` command
-- [ ] Persist in NBT, sync to client for correct model rendering
-- [ ] PlayerModel `slim` boolean toggle on the renderer
+- [x] Two skin textures: wide arms (male) and slim arms (female/Alex model)
+- [x] `/squire appearance <male|female>` command
+- [x] Persist in NBT, sync to client via SynchedEntityData
+- [x] PlayerModel `slim` boolean toggle on the renderer (dual-model swap)
 
 ### Chat Lines (Contextual Flavor)
 - [x] Triggered on state transitions via ChatHandler:
@@ -98,14 +98,14 @@ A true player-equivalent companion entity for Minecraft. The squire walks, fight
 - [x] Equipment slots on left (armor) and right (weapons) flanking backpack grid
 - [x] Stats display: HP bar, XP bar, level, current mode
 - [x] Locked rows shown as greyed with "Lv.X" labels — visible but inaccessible
-- [ ] Custom background texture (not vanilla chest skin)
+- [x] Custom background (fully programmatic — dark UI with colored bars, no vanilla texture)
 
 ### Leveled Backpack
 - [x] Lv1-9: Satchel — 9 slots (1 row)
 - [x] Lv10-19: Pack — 18 slots (2 rows)
 - [x] Lv20-29: Knapsack — 27 slots (3 rows)
 - [x] Lv30: War Chest — 36 slots (4 rows)
-- [ ] 3D model via `RenderLayer` — swap based on `backpackTier` synced data
+- [x] 3D model via `BackpackLayer` — tier-scaled colored box on body, swaps size/color per tier
 - [x] Dynamic `MenuType` with slot count based on current tier
 - [x] Persist tier + contents in NBT (handle tier upgrades gracefully — don't lose items)
 

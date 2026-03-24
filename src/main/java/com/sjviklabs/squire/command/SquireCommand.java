@@ -18,7 +18,10 @@ import net.minecraft.commands.arguments.coordinates.BlockPosArgument;
 import net.minecraft.commands.arguments.ResourceArgument;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.network.chat.Style;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
@@ -151,6 +154,16 @@ public class SquireCommand {
                                 .executes(ctx -> setName(ctx.getSource(), StringArgumentType.getString(ctx, "name")))
                         )
                         .executes(ctx -> clearName(ctx.getSource()))
+                )
+                .then(Commands.literal("appearance")
+                        .then(Commands.argument("style", StringArgumentType.word())
+                                .suggests((ctx, builder2) -> {
+                                    builder2.suggest("male");
+                                    builder2.suggest("female");
+                                    return builder2.buildFuture();
+                                })
+                                .executes(ctx -> setAppearance(ctx.getSource(), StringArgumentType.getString(ctx, "style")))
+                        )
                 )
         );
     }
@@ -539,11 +552,13 @@ public class SquireCommand {
             source.sendFailure(Component.literal("You have no active squire."));
             return 0;
         }
-        // Strip formatting codes beyond 32 chars
+        // Strip beyond 32 chars (before formatting expansion)
         String trimmed = name.length() > 32 ? name.substring(0, 32) : name;
-        squire.setCustomName(Component.literal(trimmed));
+        // Parse & color codes into styled Component (e.g., &6Sir &eGolden)
+        Component styled = parseColorCodes(trimmed);
+        squire.setCustomName(styled);
         squire.setCustomNameVisible(true);
-        source.sendSuccess(() -> Component.literal("Squire named: " + trimmed), false);
+        source.sendSuccess(() -> Component.literal("Squire named: ").append(styled), false);
         return 1;
     }
 
@@ -561,6 +576,81 @@ public class SquireCommand {
         squire.setCustomNameVisible(false);
         source.sendSuccess(() -> Component.literal("Squire name cleared."), false);
         return 1;
+    }
+
+    // ------------------------------------------------------------------
+    // /squire appearance <male|female>
+    // ------------------------------------------------------------------
+
+    private static int setAppearance(CommandSourceStack source, String style) {
+        if (!(source.getEntity() instanceof ServerPlayer player)) {
+            source.sendFailure(Component.literal("Must be run by a player."));
+            return 0;
+        }
+        SquireEntity squire = findOwnedSquire(source, player);
+        if (squire == null) {
+            source.sendFailure(Component.literal("You have no active squire."));
+            return 0;
+        }
+        boolean slim = switch (style.toLowerCase()) {
+            case "female", "slim", "alex" -> true;
+            case "male", "wide", "steve" -> false;
+            default -> {
+                source.sendFailure(Component.literal("Unknown style: " + style + ". Use male or female."));
+                yield squire.isSlimModel(); // no change
+            }
+        };
+        squire.setSlimModel(slim);
+        String label = slim ? "Female (slim arms)" : "Male (wide arms)";
+        source.sendSuccess(() -> Component.literal("Squire appearance: " + label), false);
+        return 1;
+    }
+
+    // ------------------------------------------------------------------
+    // Color code parsing
+    // ------------------------------------------------------------------
+
+    /**
+     * Parse & color codes (e.g., &6Gold &eYellow &lBold) into a styled Component.
+     * Supports all vanilla formatting codes: 0-9, a-f (colors), k-o (formatting), r (reset).
+     */
+    private static Component parseColorCodes(String input) {
+        MutableComponent result = Component.empty();
+        Style currentStyle = Style.EMPTY;
+        StringBuilder segment = new StringBuilder();
+
+        for (int i = 0; i < input.length(); i++) {
+            if (input.charAt(i) == '&' && i + 1 < input.length()) {
+                char code = Character.toLowerCase(input.charAt(i + 1));
+                ChatFormatting fmt = ChatFormatting.getByCode(code);
+                if (fmt != null) {
+                    // Flush current segment with current style
+                    if (!segment.isEmpty()) {
+                        result.append(Component.literal(segment.toString()).withStyle(currentStyle));
+                        segment.setLength(0);
+                    }
+                    // Apply formatting
+                    if (fmt == ChatFormatting.RESET) {
+                        currentStyle = Style.EMPTY;
+                    } else if (fmt.isColor()) {
+                        currentStyle = Style.EMPTY.withColor(fmt);
+                    } else {
+                        // Decorations (bold, italic, etc.) stack on current style
+                        currentStyle = currentStyle.applyFormat(fmt);
+                    }
+                    i++; // skip the code char
+                    continue;
+                }
+            }
+            segment.append(input.charAt(i));
+        }
+
+        // Flush remaining text
+        if (!segment.isEmpty()) {
+            result.append(Component.literal(segment.toString()).withStyle(currentStyle));
+        }
+
+        return result;
     }
 
     // ------------------------------------------------------------------
