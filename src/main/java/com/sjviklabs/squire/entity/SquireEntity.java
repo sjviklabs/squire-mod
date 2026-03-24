@@ -453,6 +453,11 @@ public class SquireEntity extends TamableAnimal implements RangedAttackMob {
 
     @Override
     public void travel(net.minecraft.world.phys.Vec3 travelVector) {
+        // Don't apply travel when riding — let the horse handle movement
+        if (this.isPassenger()) {
+            super.travel(travelVector);
+            return;
+        }
         if (this.isInWater() && this.isEffectiveAi()) {
             this.moveRelative(0.12F, travelVector);
             this.move(net.minecraft.world.entity.MoverType.SELF, this.getDeltaMovement());
@@ -464,6 +469,7 @@ public class SquireEntity extends TamableAnimal implements RangedAttackMob {
             super.travel(travelVector);
         }
     }
+
 
     // ================================================================
     // Tick — periodic equipment check

@@ -17,7 +17,7 @@ public class ChatHandler {
     private static final Random RNG = new Random();
 
     // Cooldown in ticks between chat messages (prevents spam)
-    private static final int GLOBAL_COOLDOWN = 200; // 10 seconds
+    private static final int GLOBAL_COOLDOWN = 1200; // 60 seconds
 
     private final SquireEntity squire;
     private int cooldown;

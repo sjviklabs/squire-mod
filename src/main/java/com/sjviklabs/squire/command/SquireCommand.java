@@ -4,10 +4,13 @@ import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.sjviklabs.squire.ai.SquireActivityLog;
+import com.sjviklabs.squire.ai.handler.PatrolHandler;
 import com.sjviklabs.squire.ai.statemachine.SquireAI;
 import com.sjviklabs.squire.ai.statemachine.SquireAIState;
+import com.sjviklabs.squire.block.SignpostBlockEntity;
 import com.sjviklabs.squire.config.SquireConfig;
 import com.sjviklabs.squire.entity.SquireEntity;
+import com.sjviklabs.squire.init.ModBlocks;
 import com.sjviklabs.squire.init.ModEntities;
 import com.sjviklabs.squire.item.SquireLanceItem;
 import com.sjviklabs.squire.util.SquireAbilities;
@@ -184,6 +187,9 @@ public class SquireCommand {
                         )
                 )
                 .then(Commands.literal("patrol")
+                        .then(Commands.literal("start")
+                                .executes(ctx -> startSignpostPatrol(ctx.getSource()))
+                        )
                         .then(Commands.literal("stop")
                                 .executes(ctx -> stopPatrol(ctx.getSource()))
                         )
@@ -736,6 +742,61 @@ public class SquireCommand {
     // ------------------------------------------------------------------
     // /squire patrol
     // ------------------------------------------------------------------
+
+    private static int startSignpostPatrol(CommandSourceStack source) {
+        if (!(source.getEntity() instanceof ServerPlayer player)) {
+            source.sendFailure(Component.literal("Must be run by a player."));
+            return 0;
+        }
+        SquireEntity squire = findOwnedSquire(source, player);
+        if (squire == null) {
+            source.sendFailure(Component.literal("You have no active squire."));
+            return 0;
+        }
+        SquireAI ai = squire.getSquireAI();
+        if (ai == null) return 0;
+
+        // Find nearest signpost within 16 blocks
+        ServerLevel level = source.getLevel();
+        BlockPos playerPos = player.blockPosition();
+        BlockPos nearest = null;
+        double nearestDist = Double.MAX_VALUE;
+
+        int range = 16;
+        for (BlockPos check : BlockPos.betweenClosed(
+                playerPos.offset(-range, -range, -range),
+                playerPos.offset(range, range, range))) {
+            if (level.getBlockState(check).is(ModBlocks.SIGNPOST.get())) {
+                double dist = check.distSqr(playerPos);
+                if (dist < nearestDist) {
+                    nearestDist = dist;
+                    nearest = check.immutable();
+                }
+            }
+        }
+
+        if (nearest == null) {
+            source.sendFailure(Component.literal("No signpost found within 16 blocks."));
+            return 0;
+        }
+
+        List<BlockPos> route = PatrolHandler.buildRouteFromSignpost(level, nearest);
+        if (route.isEmpty()) {
+            source.sendFailure(Component.literal("Could not build route from signpost."));
+            return 0;
+        }
+
+        if (route.size() == 1) {
+            ai.getPatrol().startGuard(route.get(0));
+        } else {
+            ai.getPatrol().startPatrol(route);
+        }
+        ai.getMachine().forceState(SquireAIState.PATROL_WALK);
+
+        source.sendSuccess(() -> Component.literal(
+                "Squire patrolling " + route.size() + " waypoint(s)."), false);
+        return 1;
+    }
 
     private static int startGuardPatrol(CommandSourceStack source, BlockPos pos) {
         if (!(source.getEntity() instanceof ServerPlayer player)) {

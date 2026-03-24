@@ -1,12 +1,17 @@
 package com.sjviklabs.squire.ai.handler;
 
 import com.sjviklabs.squire.ai.statemachine.SquireAIState;
+import com.sjviklabs.squire.block.SignpostBlockEntity;
 import com.sjviklabs.squire.config.SquireConfig;
 import com.sjviklabs.squire.entity.SquireEntity;
 import net.minecraft.core.BlockPos;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.entity.BlockEntity;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Handles patrol behavior — walking between signpost waypoints in a loop.
@@ -53,6 +58,35 @@ public class PatrolHandler {
         this.route = null;
         this.currentIndex = 0;
         this.waitTimer = 0;
+    }
+
+    /**
+     * Build a patrol route by following the linked signpost chain starting at the given position.
+     * Returns the list of waypoints, or empty if the signpost has no links.
+     */
+    public static List<BlockPos> buildRouteFromSignpost(Level level, BlockPos start) {
+        List<BlockPos> waypoints = new ArrayList<>();
+        Set<BlockPos> visited = new HashSet<>();
+        BlockPos current = start;
+        int maxRoute = SquireConfig.patrolMaxRouteLength.get();
+
+        while (current != null && waypoints.size() < maxRoute) {
+            if (visited.contains(current)) {
+                // Loop detected — that's fine, route is complete
+                break;
+            }
+            visited.add(current);
+
+            BlockEntity be = level.getBlockEntity(current);
+            if (be instanceof SignpostBlockEntity signpost) {
+                waypoints.add(current);
+                current = signpost.getLinkedSignpost();
+            } else {
+                break;
+            }
+        }
+
+        return waypoints;
     }
 
     public SquireAIState tickWalk(SquireEntity s) {

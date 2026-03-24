@@ -20,6 +20,7 @@ public class ModEntities {
             ENTITY_TYPES.register("squire", () -> EntityType.Builder
                     .of(SquireEntity::new, MobCategory.MISC)
                     .sized(0.6F, 1.8F)
+                    .ridingOffset(-0.7F)
                     .clientTrackingRange(10)
                     .build(SquireMod.MODID + ":squire"));
 

@@ -117,8 +117,8 @@ public class MountHandler {
             return SquireAIState.MOUNTED_IDLE;
         }
 
-        // Sprint if far away
-        double speed = distSq > startDist * startDist * 4 ? 1.4 : 1.0;
+        // Sprint if far away — use higher multipliers to match player-ridden speed
+        double speed = distSq > startDist * startDist * 4 ? 2.5 : 1.8;
         horse.getNavigation().moveTo(owner, speed);
 
         return SquireAIState.MOUNTED_FOLLOW;
@@ -139,8 +139,8 @@ public class MountHandler {
         AbstractHorse horse = (AbstractHorse) s.getVehicle();
         s.getLookControl().setLookAt(target, 30.0F, 30.0F);
 
-        // Drive horse toward target
-        horse.getNavigation().moveTo(target, 1.4);
+        // Drive horse toward target — charge speed
+        horse.getNavigation().moveTo(target, 2.5);
 
         // Check attack reach (extended for mounted lance)
         double distSq = s.distanceToSqr(target);
