@@ -263,8 +263,11 @@ public class MiningHandler {
             // Vanilla uses /30 when the tool can harvest the block, /100 otherwise
             boolean canHarvest = tool.isCorrectToolForDrops(state) || state.requiresCorrectToolForDrops() == false;
             float divisor = canHarvest ? 30.0F : 100.0F;
+            // Level bonus: 1.0 + (level * miningSpeedPerLevel). At default 0.0167, Lv30 = +50%.
+            float levelBonus = 1.0F + (s.getSquireLevel() * SquireConfig.miningSpeedPerLevel.get().floatValue());
             progressPerTick = (toolSpeed / (destroySpeed * divisor))
-                    * SquireConfig.breakSpeedMultiplier.get().floatValue();
+                    * SquireConfig.breakSpeedMultiplier.get().floatValue()
+                    * levelBonus;
         }
 
         breakProgress += progressPerTick;

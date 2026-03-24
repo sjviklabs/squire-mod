@@ -39,6 +39,7 @@ public final class SquireConfig {
     // --- Mining ---
     public static final ModConfigSpec.DoubleValue mineReach;
     public static final ModConfigSpec.DoubleValue breakSpeedMultiplier;
+    public static final ModConfigSpec.DoubleValue miningSpeedPerLevel;
     public static final ModConfigSpec.IntValue maxClearVolume;
 
     // --- Placing ---
@@ -54,12 +55,19 @@ public final class SquireConfig {
     public static final ModConfigSpec.DoubleValue speedPerLevel;
 
     // --- Ability unlock levels ---
+    // Combat/Defense
     public static final ModConfigSpec.IntValue abilityFireResLevel;
     public static final ModConfigSpec.IntValue abilityRangedLevel;
     public static final ModConfigSpec.IntValue abilityShieldLevel;
     public static final ModConfigSpec.IntValue abilityThornsLevel;
     public static final ModConfigSpec.IntValue abilityLifestealLevel;
     public static final ModConfigSpec.IntValue abilityUndyingLevel;
+    // Work
+    public static final ModConfigSpec.IntValue abilityAutoTorchLevel;
+    public static final ModConfigSpec.IntValue abilityVeinMineLevel;
+    public static final ModConfigSpec.IntValue abilityFortuneSenseLevel;
+    public static final ModConfigSpec.IntValue abilityChestDepositLevel;
+    public static final ModConfigSpec.IntValue abilityTirelessLevel;
 
     // --- Ranged combat ---
     public static final ModConfigSpec.DoubleValue rangedOptimalRange;
@@ -142,6 +150,9 @@ public final class SquireConfig {
         breakSpeedMultiplier = builder
                 .comment("Multiplier for block break speed. 1.0 = same as player.")
                 .defineInRange("breakSpeedMultiplier", 1.0, 0.1, 3.0);
+        miningSpeedPerLevel = builder
+                .comment("Bonus mining speed per squire level. 0.0167 = +50% at Lv30. Set to 0 to disable.")
+                .defineInRange("miningSpeedPerLevel", 0.0167, 0.0, 0.1);
         maxClearVolume = builder
                 .comment("Maximum number of blocks allowed in a /squire clear command. Prevents accidental massive clears.")
                 .defineInRange("maxClearVolume", 32768, 1, 1000000);
@@ -199,6 +210,22 @@ public final class SquireConfig {
         abilityUndyingLevel = builder
                 .comment("Level at which squire revives once on death (5-min cooldown).")
                 .defineInRange("undyingLevel", 30, 1, 50);
+        // Work abilities
+        abilityAutoTorchLevel = builder
+                .comment("Level at which squire places torches in dark areas while following.")
+                .defineInRange("autoTorchLevel", 5, 1, 50);
+        abilityVeinMineLevel = builder
+                .comment("Level at which mining an ore block mines the connected vein.")
+                .defineInRange("veinMineLevel", 15, 1, 50);
+        abilityFortuneSenseLevel = builder
+                .comment("Level at which squire prioritizes fortune tools on ore blocks.")
+                .defineInRange("fortuneSenseLevel", 25, 1, 50);
+        abilityChestDepositLevel = builder
+                .comment("Level at which squire can deposit items into chests.")
+                .defineInRange("chestDepositLevel", 20, 1, 50);
+        abilityTirelessLevel = builder
+                .comment("Level at which squire has no mining speed decay during long area clears.")
+                .defineInRange("tirelessLevel", 30, 1, 50);
         builder.pop();
 
         // ---- Ranged combat ----
