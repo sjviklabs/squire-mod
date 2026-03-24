@@ -6,6 +6,7 @@ import com.sjviklabs.squire.ai.handler.ItemHandler;
 import com.sjviklabs.squire.ai.handler.MiningHandler;
 import com.sjviklabs.squire.ai.handler.PlacingHandler;
 import com.sjviklabs.squire.ai.handler.SurvivalHandler;
+import com.sjviklabs.squire.ai.handler.TorchHandler;
 import com.sjviklabs.squire.entity.SquireEntity;
 import net.minecraft.world.entity.player.Player;
 
@@ -32,6 +33,7 @@ public class SquireAI {
     private final ItemHandler items;
     private final MiningHandler mining;
     private final PlacingHandler placing;
+    private final TorchHandler torch;
 
     public SquireAI(SquireEntity squire) {
         this.squire = squire;
@@ -42,6 +44,7 @@ public class SquireAI {
         this.items = new ItemHandler(squire);
         this.mining = new MiningHandler(squire);
         this.placing = new PlacingHandler(squire);
+        this.torch = new TorchHandler(squire);
         registerTransitions();
     }
 
@@ -208,7 +211,11 @@ public class SquireAI {
         machine.addTransition(new AITransition(
                 SquireAIState.FOLLOWING_OWNER,
                 () -> !follow.shouldStop(),
-                follow::tick,
+                s -> {
+                    // Auto-torch while following in dark areas
+                    torch.tryPlaceTorch();
+                    return follow.tick(s);
+                },
                 1, 30
         ));
     }
@@ -330,13 +337,16 @@ public class SquireAI {
         ));
     }
 
-    // ---- Idle cosmetics (priority 50) ----
+    // ---- Idle cosmetics + utility (priority 50) ----
 
     private void registerIdleTransitions() {
         machine.addTransition(new AITransition(
                 SquireAIState.IDLE,
                 () -> !squire.isOrderedToSit(),
                 s -> {
+                    // Auto-torch: place torch if dark (ability-gated, has its own cooldown)
+                    torch.tryPlaceTorch();
+
                     Player player = s.level().getNearestPlayer(s, 8.0);
                     if (player != null) {
                         s.getLookControl().setLookAt(player, 10.0F,

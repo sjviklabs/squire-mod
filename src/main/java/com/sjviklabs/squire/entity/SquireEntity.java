@@ -545,7 +545,17 @@ public class SquireEntity extends TamableAnimal implements RangedAttackMob {
     @Nullable
     @Override
     protected SoundEvent getAmbientSound() {
-        return null; // Intentionally silent
+        // ~25% chance to make a sound when vanilla calls this (avg every 80 ticks)
+        // Uses villager ambient sound — a subtle "hmm" that feels human
+        if (this.getRandom().nextFloat() < 0.25F) {
+            return SoundEvents.VILLAGER_AMBIENT;
+        }
+        return null;
+    }
+
+    @Override
+    protected float getSoundVolume() {
+        return 0.6F; // Quieter than default — squire shouldn't be louder than mobs
     }
 
     @Override

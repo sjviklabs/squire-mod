@@ -69,6 +69,10 @@ public final class SquireConfig {
     public static final ModConfigSpec.IntValue abilityChestDepositLevel;
     public static final ModConfigSpec.IntValue abilityTirelessLevel;
 
+    // --- Auto-torch ---
+    public static final ModConfigSpec.IntValue torchLightThreshold;
+    public static final ModConfigSpec.IntValue torchCooldownTicks;
+
     // --- Ranged combat ---
     public static final ModConfigSpec.DoubleValue rangedOptimalRange;
     public static final ModConfigSpec.IntValue rangedCooldownTicks;
@@ -226,6 +230,16 @@ public final class SquireConfig {
         abilityTirelessLevel = builder
                 .comment("Level at which squire has no mining speed decay during long area clears.")
                 .defineInRange("tirelessLevel", 30, 1, 50);
+        builder.pop();
+
+        // ---- Auto-torch ----
+        builder.push("autoTorch");
+        torchLightThreshold = builder
+                .comment("Squire places a torch when block light at feet is at or below this value. 7 = hostile mob spawn threshold.")
+                .defineInRange("lightThreshold", 7, 0, 15);
+        torchCooldownTicks = builder
+                .comment("Minimum ticks between torch placements (prevents spam). 60 = 3 seconds.")
+                .defineInRange("cooldownTicks", 60, 20, 200);
         builder.pop();
 
         // ---- Ranged combat ----

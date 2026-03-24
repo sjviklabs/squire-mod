@@ -15,6 +15,7 @@ import net.minecraft.world.item.BowItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.ShieldItem;
 import net.minecraft.world.item.SwordItem;
+import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.item.component.ItemAttributeModifiers;
 import net.minecraft.world.item.enchantment.Enchantment;
@@ -315,6 +316,7 @@ public final class SquireEquipmentHelper {
 
         // Equip the new item
         squire.setItemSlot(slot, newItem.copy());
+        playEquipSound(squire, slot);
 
         // Return old item to inventory
         if (!old.isEmpty()) {
@@ -331,9 +333,23 @@ public final class SquireEquipmentHelper {
         ItemStack newItem = inv.removeItemNoUpdate(invIdx);
 
         squire.setItemSlot(slot, newItem);
+        playEquipSound(squire, slot);
 
         if (!old.isEmpty()) {
             inv.addItem(old);
+        }
+    }
+
+    /**
+     * Play an appropriate equip sound based on the equipment slot type.
+     * Armor slots get the armor equip sound, weapon/offhand get a generic equip sound.
+     */
+    private static void playEquipSound(SquireEntity squire, EquipmentSlot slot) {
+        switch (slot) {
+            case HEAD, CHEST, LEGS, FEET ->
+                    squire.playSound(SoundEvents.ARMOR_EQUIP_IRON.value(), 1.0F, 1.0F);
+            case MAINHAND, OFFHAND ->
+                    squire.playSound(SoundEvents.ARMOR_EQUIP_GENERIC.value(), 0.8F, 1.0F);
         }
     }
 }

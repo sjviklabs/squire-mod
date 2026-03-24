@@ -8,6 +8,8 @@ import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.particles.ItemParticleOption;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.food.FoodProperties;
 import net.minecraft.world.item.ItemStack;
 
@@ -55,6 +57,9 @@ public class SurvivalHandler {
 
         if (eatingTicks > 0 && eatingTicks % 4 == 0) {
             spawnEatingParticles(s);
+            // Eating crunch sound every 4 ticks (matches particle timing)
+            s.playSound(SoundEvents.GENERIC_EAT, 0.5F,
+                    s.level().getRandom().nextFloat() * 0.1F + 0.9F);
         }
 
         if (eatingTicks <= 0) {
@@ -105,6 +110,8 @@ public class SurvivalHandler {
             String foodName = stack.getHoverName().getString();
             inv.removeItem(foodSlot, 1);
             s.heal((float) nutritionValue);
+            // Burp sound on finishing food
+            s.playSound(SoundEvents.PLAYER_BURP, 0.5F, s.level().getRandom().nextFloat() * 0.1F + 0.9F);
             var log = s.getActivityLog();
             if (log != null) {
                 log.log("EAT", "Ate " + foodName + " (+" + nutritionValue + " HP)"

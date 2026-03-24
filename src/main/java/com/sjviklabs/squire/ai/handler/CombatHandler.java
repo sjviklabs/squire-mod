@@ -4,6 +4,7 @@ import com.sjviklabs.squire.ai.statemachine.SquireAIState;
 import com.sjviklabs.squire.config.SquireConfig;
 import com.sjviklabs.squire.entity.SquireEntity;
 import com.sjviklabs.squire.util.SquireAbilities;
+import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.attributes.Attributes;
@@ -85,6 +86,10 @@ public class CombatHandler {
             boolean hitLanded = s.doHurtTarget(target);
             recalculateAttackCooldown();
             if (hitLanded) {
+                // Melee hit sound — strong attack sweep
+                s.playSound(SoundEvents.PLAYER_ATTACK_STRONG, 1.0F,
+                        s.level().getRandom().nextFloat() * 0.1F + 0.9F);
+
                 // Lifesteal: heal 10% of damage dealt (level-gated)
                 if (SquireAbilities.hasLifesteal(s)) {
                     float dmg = (float) s.getAttributeValue(Attributes.ATTACK_DAMAGE);
@@ -96,6 +101,8 @@ public class CombatHandler {
 
                 var log = s.getActivityLog();
                 if (!target.isAlive()) {
+                    // Kill confirmation — crit sound
+                    s.playSound(SoundEvents.PLAYER_ATTACK_CRIT, 1.0F, 1.0F);
                     s.getProgression().addKillXP();
                     if (log != null) {
                         log.log("COMBAT", "Killed " + target.getType().toShortString()
