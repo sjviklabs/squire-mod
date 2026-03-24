@@ -3,6 +3,7 @@ package com.sjviklabs.squire.entity;
 import com.sjviklabs.squire.ai.SquireActivityLog;
 import com.sjviklabs.squire.ai.handler.ProgressionHandler;
 import com.sjviklabs.squire.ai.statemachine.SquireAI;
+import com.sjviklabs.squire.ai.statemachine.SquireAIState;
 import com.sjviklabs.squire.config.SquireConfig;
 import com.sjviklabs.squire.init.ModItems;
 import com.sjviklabs.squire.util.SquireAbilities;
@@ -480,9 +481,24 @@ public class SquireEntity extends TamableAnimal implements RangedAttackMob {
 
             if (++this.equipCheckTimer >= SquireConfig.equipCheckInterval.get()) {
                 this.equipCheckTimer = 0;
-                SquireEquipmentHelper.runFullEquipCheck(this);
+                // Skip equip check while mining/placing — prevents weapon overwriting the
+                // selected tool mid-break, which causes the wrong item to render in hand.
+                if (!isInWorkState()) {
+                    SquireEquipmentHelper.runFullEquipCheck(this);
+                }
             }
         }
+    }
+
+    /**
+     * Whether the squire is currently in a work state (mining or placing).
+     * Used to suppress auto-equip checks that would overwrite the selected tool.
+     */
+    public boolean isInWorkState() {
+        if (this.squireAI == null) return false;
+        SquireAIState state = this.squireAI.getMachine().getCurrentState();
+        return state == SquireAIState.MINING_APPROACH || state == SquireAIState.MINING_BREAK
+                || state == SquireAIState.PLACING_APPROACH || state == SquireAIState.PLACING_BLOCK;
     }
 
     /** Accessor for debug/admin commands. Null before first server-side aiStep(). */

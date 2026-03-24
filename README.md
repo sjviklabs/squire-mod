@@ -1,68 +1,127 @@
 # Squire Mod
 
-A true player-like companion entity for Minecraft. Your squire walks, runs, swims, fights with weapons, wears armor, eats food, and follows your lead. No teleporting. No cheating. Just a loyal companion that does things the hard way.
+A true player-like companion for Minecraft. Your squire walks, runs, swims, fights with weapons, wears armor, eats food, levels up, and follows your lead. No teleporting. No cheating. Just a loyal companion that does things the hard way.
 
-**Platform:** NeoForge 1.21.1
-**License:** MIT
+**Platform:** NeoForge 1.21.1 | **Java:** 21 | **License:** MIT
 
-## Features (Phase 1 — In Development)
+## Features
 
-- **Player-like movement** — walks, runs, sprints, swims. Never teleports.
-- **Combat** — defends you with equipped weapons. Fights what you fight, fights what fights you.
-- **Auto-equip** — picks up and equips the best armor, weapons, and shields from inventory.
-- **Survival** — eats food when health is low.
-- **Modes** — FOLLOW (default) and STAY (shift+right-click to toggle).
-- **Recall** — right-click your badge to call the squire back.
-- **Inventory** — 27-slot general inventory + armor/offhand slots. Right-click to open.
-- **Death** — drops inventory + badge on death. Resummon with the badge.
-- **Config** — every value is configurable for modpack authors.
-- **Multiplayer** — one squire per player, admin commands for server management.
+### Core
+
+| Feature | Description |
+|---------|-------------|
+| **Movement** | Walks, runs, sprints, swims. Never teleports. |
+| **Combat** | Melee + ranged (bows). Fights what you fight, fights what fights you. Auto-targets hostiles near you. |
+| **Auto-equip** | Picks up and equips the best armor, weapons, shields from inventory. |
+| **Survival** | Eats food when health drops below threshold. |
+| **Modes** | Follow / Guard / Stay. Shift+right-click to cycle. |
+| **Inventory** | 27-slot general + armor/offhand. Shift+right-click to open. |
+| **Death** | Drops inventory + badge. Death message with coordinates. Resummon with the badge. |
+| **Recall** | Right-click your Squire's Crest to call the squire back instantly. |
+
+### Progression (30 Levels)
+
+XP from combat kills and block mining. Quadratic scaling curve.
+
+| Level | Ability Unlocked |
+|-------|-----------------|
+| 5 | Fire Resistance |
+| 10 | Ranged Combat (bows) |
+| 15 | Shield Blocking |
+| 20 | Thorns Reflection |
+| 25 | Lifesteal |
+| 30 | Undying (revive on death) |
+
+Each level also grants bonus health, damage, and movement speed.
+
+### Building & Mining
+
+| Feature | Description |
+|---------|-------------|
+| **Single mine** | `/squire mine <pos>` — break one block |
+| **Area clear** | `/squire clear <from> <to>` — preview with particles, confirm or cancel |
+| **Block place** | `/squire place <pos> <block>` — place from inventory |
+| **Chunk loading** | Auto-loads chunks during area clear while owner is online |
+
+## Commands
+
+### Player Commands
+
+| Command | Description |
+|---------|-------------|
+| `/squire info` | Show squire status (health, level, mode, position) |
+| `/squire mode <follow\|guard\|stay>` | Set behavior mode |
+| `/squire mine <x y z>` | Mine a single block |
+| `/squire place <x y z> <block>` | Place a block from inventory |
+| `/squire clear <x1 y1 z1> <x2 y2 z2>` | Preview area clear (confirm/cancel after) |
+| `/squire log [count]` | View recent activity log |
+
+### Admin Commands
+
+| Command | Description |
+|---------|-------------|
+| `/squire list` | List all squires on the server |
+| `/squire kill` | Kill your squire |
+| `/squire xp <amount>` | Grant XP (debug/testing) |
+| `/squire limit <n>` | Set max squires per player |
+
+## Items
+
+| Item | How to Get | Use |
+|------|-----------|-----|
+| **Squire's Crest** | Craft | Right-click to summon/recall your squire |
+| **Squire's Lance** | Craft | Area selection tool for clear commands |
 
 ## Installation
 
 1. Install [NeoForge](https://neoforged.net/) for Minecraft 1.21.1
-2. Download the latest release from [CurseForge](#) or [Modrinth](#)
-3. Place the JAR in your `mods/` folder
+2. Download the latest release from [GitHub Releases](https://github.com/sjviklabs/squire-mod/releases)
+3. Drop the JAR in your `mods/` folder
 4. Launch the game
 
-## Crafting
+## Configuration
 
-Craft a **Squire Badge** to summon your companion. Right-click with the badge to summon. Shift+right-click the squire to toggle FOLLOW/STAY.
+All values tunable via `squire-common.toml` (30+ settings):
 
-## For Modpack Authors
+| Category | Examples |
+|----------|---------|
+| **Limits** | maxSquiresPerPlayer |
+| **Movement** | followStartDistance, followStopDistance, sprintDistance |
+| **Combat** | aggroRange, rangedOptimalRange, combatLeashDistance |
+| **Survival** | eatHealthThreshold, baseHealth, naturalRegenRate |
+| **Mining** | mineReach, breakSpeedMultiplier, maxClearVolume |
+| **Progression** | xpPerKill, xpPerBlock, xpPerLevel, maxLevel |
+| **Abilities** | Individual unlock levels for all 6 abilities |
+| **Debug** | godMode, activityLogging |
 
-All values are configurable via `squire-common.toml`:
-- Max squires per player
-- Follow/sprint/combat distances
-- Health, regen, eat threshold
-- Tick intervals for all AI systems
-
-The squire implements `OwnableEntity` and uses `MobCategory.MISC` (does not affect mob caps).
-
-## Roadmap
-
-- **Phase 1:** Walk, fight, equip, follow (current)
-- **Phase 2:** Block breaking/placing, tool selection, progression system
-- **Phase 3:** Player commands ("mine here", "guard", "store items")
-- **Phase 4:** Autonomous multi-step tasks, MineColonies-grade intelligence
-
-See [docs/PHASE-ROADMAP.md](docs/PHASE-ROADMAP.md) for details.
+The squire uses `MobCategory.MISC` and does not affect mob caps.
 
 ## Development
 
 ```bash
-# Build
+# Build the mod
 ./gradlew build
 
-# Run client
+# Run dev client
 ./gradlew runClient
 
-# Run server
+# Run dev server
 ./gradlew runServer
+
+# Deploy to servers + local client
+./deploy.sh --restart
 ```
 
-**IDE:** IntelliJ IDEA with [Minecraft Development Plugin](https://mcdev.io/)
-**JDK:** Java 21
+**IDE:** IntelliJ IDEA with [Minecraft Development Plugin](https://mcdev.io/) | **JDK:** Java 21
+
+## Roadmap
+
+- [x] **Phase 1** — Walk, fight, equip, follow
+- [x] **Phase 2** — Mining, placing, progression, abilities, state machine
+- [ ] **Phase 3** — Container interaction, farming, task queue
+- [ ] **Phase 4** — Autonomous multi-step tasks, async pathfinding
+
+See [docs/PHASE-ROADMAP.md](docs/PHASE-ROADMAP.md) for details.
 
 ## Links
 

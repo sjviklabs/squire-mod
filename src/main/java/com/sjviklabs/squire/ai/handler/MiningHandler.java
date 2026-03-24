@@ -7,8 +7,14 @@ import com.sjviklabs.squire.util.SquireEquipmentHelper;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundSource;
+import net.minecraft.core.Holder;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.enchantment.Enchantment;
+import net.minecraft.world.item.enchantment.Enchantments;
+import net.minecraft.world.item.enchantment.ItemEnchantments;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.state.BlockState;
@@ -234,17 +240,30 @@ public class MiningHandler {
         // Arm swing animation
         s.swing(InteractionHand.MAIN_HAND);
 
-        // Calculate break speed
+        // Calculate break speed — matches vanilla player mining formula:
+        //   speed = tool.getDestroySpeed(state)  (1.0 for bare hand / wrong tool)
+        //   speed += efficiency bonus             (level^2 + 1 if efficiency present)
+        //   progress = speed / (hardness * divisor) where divisor = 30 (correct tool) or 100 (wrong tool)
         ItemStack tool = s.getMainHandItem();
         float toolSpeed = tool.getDestroySpeed(state);
 
-        // If tool has no special effectiveness, base speed is 1.0
+        // Add efficiency enchantment bonus: level^2 + 1 (matches vanilla)
+        if (toolSpeed > 1.0F) {
+            int efficiencyLevel = getEfficiencyLevel(tool);
+            if (efficiencyLevel > 0) {
+                toolSpeed += (float) (efficiencyLevel * efficiencyLevel + 1);
+            }
+        }
+
         // destroySpeed of 0 means instant break (like tall grass)
         float progressPerTick;
         if (destroySpeed == 0) {
             progressPerTick = 1.0F; // instant
         } else {
-            progressPerTick = (toolSpeed / (destroySpeed * 30.0F))
+            // Vanilla uses /30 when the tool can harvest the block, /100 otherwise
+            boolean canHarvest = tool.isCorrectToolForDrops(state) || state.requiresCorrectToolForDrops() == false;
+            float divisor = canHarvest ? 30.0F : 100.0F;
+            progressPerTick = (toolSpeed / (destroySpeed * divisor))
                     * SquireConfig.breakSpeedMultiplier.get().floatValue();
         }
 
@@ -311,6 +330,23 @@ public class MiningHandler {
         if (log != null) {
             log.log("CLEAR", "Area clear complete");
         }
+    }
+
+    /**
+     * Extract the efficiency enchantment level from an item stack.
+     * Returns 0 if not present.
+     */
+    private int getEfficiencyLevel(ItemStack stack) {
+        if (stack.isEmpty()) return 0;
+        ItemEnchantments enchantments = stack.getOrDefault(DataComponents.ENCHANTMENTS, ItemEnchantments.EMPTY);
+        for (var entry : enchantments.entrySet()) {
+            Holder<Enchantment> holder = entry.getKey();
+            // Check by key — Enchantments.EFFICIENCY is a ResourceKey<Enchantment>
+            if (holder.is(Enchantments.EFFICIENCY)) {
+                return entry.getIntValue();
+            }
+        }
+        return 0;
     }
 
     /**
