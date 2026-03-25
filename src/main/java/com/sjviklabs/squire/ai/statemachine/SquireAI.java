@@ -529,6 +529,15 @@ public class SquireAI {
                 patrol::tickWait,
                 1, 32
         ));
+
+        // Resume patrol after interruption (combat, eating, etc.)
+        // If squire lands in IDLE but patrol flag is still active, re-enter patrol.
+        machine.addTransition(new AITransition(
+                SquireAIState.IDLE,
+                patrol::isPatrolling,
+                s -> SquireAIState.PATROL_WALK,
+                1, 32
+        ));
     }
 
     // ---- Idle cosmetics + utility (priority 50) ----
