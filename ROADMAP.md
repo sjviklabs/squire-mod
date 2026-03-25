@@ -75,25 +75,19 @@ Before marking any item "done":
   - Add lang strings for tier names
   - Test: level up squire through tiers, verify each visual stage renders correctly
 
-### 4. Radial Command Menu [NOT STARTED]
-- **Priority:** High. Replaces chat commands with discoverable UI.
-- **Confidence:** ~50% (design complete, no keybinds exist yet, network infra partially built)
-- **Design:** Hold keybind while looking at squire → radial wheel appears → release on wedge to execute.
-  - 8 wedges: Follow, Guard, Patrol, Mine, Store, Fetch, Mount/Dismount, Stay
-  - Center: Open Inventory
-  - Client renders wheel, sends `SquireCommandPayload` to server on selection
-- **Tasks:**
-  - Register keybind in `ClientSetup` via `RegisterKeyMappingsEvent`
-  - Create `client/SquireKeybinds.java` for keybind definitions
-  - Create `client/SquireRadialScreen.java` extending `Screen`
-  - Render wedge segments with icons and labels using `GuiGraphics`
-  - Mouse angle calculation to detect hovered wedge
-  - Create `network/SquireCommandPayload.java` (command ID + entity ID)
-  - Server-side handler: validate ownership, dispatch to existing command logic
-  - Create wedge icon textures (16x16 each, Grimdark style)
-  - Add config: keybind default key, radial menu opacity
-  - Add lang strings for wedge labels
-  - Test: open wheel, select each command, verify server execution
+### 4. Radial Command Menu [DONE]
+- **Confidence:** 95%
+- All tasks complete. Blur fix applied (override renderBackground). 8 wedges working.
+
+### 5. Auto-Craft Basic Gear [DONE]
+- **Confidence:** 90% (built, compiles, needs extended play-testing)
+- Squire crafts wooden sword, shield, bow, and arrows from scavenged materials.
+- Config toggle: `autoCraft.enabled`
+
+### WIP: Horseback Movement
+- `horse.move(MoverType.SELF)` approach written but horse still doesn't move correctly in testing.
+- Root cause: `AbstractHorse.getControllingPassenger()` only returns Player in 1.21.1.
+- Needs deeper investigation into how to drive a horse with an NPC passenger.
 
 ---
 
@@ -176,6 +170,13 @@ Track what was done each session. Keep it short.
 - Fixed mob targeting: changed from Monster.class to Mob.class with Enemy interface predicate (covers Slime, MagmaCube, Phantom, Ghast, Shulker, etc.)
 - WIP: Custom squire weapons (lance, bow) have rendering/equip issues. Squire uses vanilla gear for now. Lance still works as player command tool.
 - Next: Test horseback + mob targeting fixes, commit, then continue with Phase 5a.5
+
+### 2026-03-25 (Session 4)
+- Auto-craft gear: squire crafts wooden sword, shield, bow, arrows from inventory materials
+- Fixed radial menu blur: overrode renderBackground() to skip vanilla gaussian blur
+- Tuned radial opacity (0xB0 wedges), added ring border outlines
+- WIP: horseback movement still broken, marked for deeper investigation
+- Committed and pushed both sessions' work
 
 ---
 
