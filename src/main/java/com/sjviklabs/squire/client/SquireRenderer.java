@@ -85,12 +85,13 @@ public class SquireRenderer extends HumanoidMobRenderer<SquireEntity, PlayerMode
         float healthPct = entity.getHealth() / entity.getMaxHealth();
 
         poseStack.pushPose();
-        poseStack.translate(namePos.x, namePos.y + 0.5, namePos.z);
+        // Position above the entity's head: use namePos.y + extra height to clear the nametag
+        poseStack.translate(namePos.x, namePos.y + 1.0, namePos.z);
         poseStack.mulPose(this.entityRenderDispatcher.cameraOrientation());
         poseStack.scale(0.025F, -0.025F, 0.025F);
 
         // Position the bar just below the name text (Y+ = down in screen space due to -0.025 Y scale)
-        poseStack.translate(0.0, 12.0, 0.0);
+        poseStack.translate(0.0, 10.0, 0.0);
 
         Matrix4f matrix = poseStack.last().pose();
         float barHalfWidth = 20.0F;

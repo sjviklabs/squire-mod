@@ -4,6 +4,7 @@ import com.sjviklabs.squire.ai.statemachine.SquireAIState;
 import com.sjviklabs.squire.config.SquireConfig;
 import com.sjviklabs.squire.entity.SquireEntity;
 import com.sjviklabs.squire.util.SquireAbilities;
+import com.sjviklabs.squire.util.SquireEquipmentHelper;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.LivingEntity;
@@ -144,8 +145,9 @@ public class CombatHandler {
             return SquireAIState.IDLE;
         }
 
-        // No arrows left — fall back to melee
+        // No arrows left — fall back to melee and swap weapons
         if (!s.hasArrows()) {
+            SquireEquipmentHelper.switchToMeleeLoadout(s);
             return SquireAIState.COMBAT_APPROACH;
         }
 
@@ -158,8 +160,9 @@ public class CombatHandler {
         double distSq = s.distanceToSqr(target);
         double optimalRange = SquireConfig.rangedOptimalRange.get();
 
-        // Too close — switch to melee
+        // Too close — switch to melee and immediately swap weapons
         if (distSq < RANGED_MIN_DIST * RANGED_MIN_DIST) {
+            SquireEquipmentHelper.switchToMeleeLoadout(s);
             return SquireAIState.COMBAT_APPROACH;
         }
 
@@ -196,12 +199,21 @@ public class CombatHandler {
 
     /**
      * Determine if we should use ranged combat mode.
-     * Requires: bow in mainhand, ranged ability unlocked, arrows available.
+     * Requires: ranged ability unlocked, arrows available, target beyond melee range.
      */
     public boolean shouldUseRanged() {
-        return squire.hasBowEquipped()
-                && SquireAbilities.hasRangedCombat(squire)
-                && squire.hasArrows();
+        if (!SquireAbilities.hasRangedCombat(squire) || !squire.hasArrows()) {
+            return false;
+        }
+        // Don't enter ranged if target is already in melee range
+        LivingEntity target = squire.getTarget();
+        if (target != null) {
+            double distSq = squire.distanceToSqr(target);
+            if (distSq < RANGED_MIN_DIST * RANGED_MIN_DIST) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /** Whether the squire has a valid combat target. */

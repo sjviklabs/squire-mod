@@ -114,9 +114,12 @@ public final class SquireEquipmentHelper {
         }
 
         // --- Mainhand weapon ---
-        // If squire has ranged ability + arrows, prefer bow. Otherwise best melee weapon.
+        // Prefer bow ONLY during active ranged combat. Otherwise best melee weapon.
         {
-            boolean preferBow = SquireAbilities.hasRangedCombat(squire) && squire.hasArrows();
+            boolean inRangedCombat = squire.getSquireAI() != null
+                    && squire.getSquireAI().isInState(com.sjviklabs.squire.ai.statemachine.SquireAIState.COMBAT_RANGED);
+            boolean preferBow = inRangedCombat
+                    && SquireAbilities.hasRangedCombat(squire) && squire.hasArrows();
             ItemStack currentMainhand = squire.getItemBySlot(EquipmentSlot.MAINHAND);
 
             if (preferBow) {
@@ -153,15 +156,71 @@ public final class SquireEquipmentHelper {
         }
 
         // --- Offhand shield ---
+        // Stow shield when bow is in mainhand (can't use both). Equip shield otherwise.
         {
+            ItemStack finalMainhand = squire.getItemBySlot(EquipmentSlot.MAINHAND);
+            boolean holdingBow = finalMainhand.getItem() instanceof BowItem;
             ItemStack currentOffhand = squire.getItemBySlot(EquipmentSlot.OFFHAND);
-            if (!isShield(currentOffhand)) {
+
+            if (holdingBow && isShield(currentOffhand)) {
+                // Stow shield into inventory while using bow
+                squire.setItemSlot(EquipmentSlot.OFFHAND, ItemStack.EMPTY);
+                inv.addItem(currentOffhand);
+            } else if (!holdingBow && !isShield(currentOffhand)) {
+                // Not holding bow — equip a shield if available
                 for (int i = 0; i < inv.getContainerSize(); i++) {
                     ItemStack candidate = inv.getItem(i);
                     if (isShield(candidate) && !isCursed(candidate)) {
                         swapEquipmentFromSlot(squire, EquipmentSlot.OFFHAND, inv, i);
                         break;
                     }
+                }
+            }
+        }
+    }
+
+    /**
+     * Force-switch from ranged to melee loadout: stow bow, equip best melee weapon,
+     * equip shield. Called directly when transitioning out of COMBAT_RANGED, bypassing
+     * the state-based logic in runFullEquipCheck (which would still see COMBAT_RANGED
+     * since the state machine hasn't ticked yet).
+     */
+    public static void switchToMeleeLoadout(SquireEntity squire) {
+        SquireInventory inv = squire.getSquireInventory();
+
+        // --- Stow bow, equip best melee weapon ---
+        ItemStack currentMainhand = squire.getItemBySlot(EquipmentSlot.MAINHAND);
+        if (currentMainhand.getItem() instanceof BowItem) {
+            // Put bow back in inventory
+            squire.setItemSlot(EquipmentSlot.MAINHAND, ItemStack.EMPTY);
+            inv.addItem(currentMainhand);
+        }
+
+        // Find best melee weapon in inventory
+        ItemStack bestWeapon = squire.getItemBySlot(EquipmentSlot.MAINHAND);
+        int bestIdx = -1;
+        for (int i = 0; i < inv.getContainerSize(); i++) {
+            ItemStack candidate = inv.getItem(i);
+            if (candidate.isEmpty()) continue;
+            if (!(candidate.getItem() instanceof SwordItem) && !(candidate.getItem() instanceof AxeItem)) continue;
+            if (isCursed(candidate)) continue;
+            if (isBetterWeapon(candidate, bestWeapon)) {
+                bestWeapon = candidate;
+                bestIdx = i;
+            }
+        }
+        if (bestIdx >= 0) {
+            swapEquipmentFromSlot(squire, EquipmentSlot.MAINHAND, inv, bestIdx);
+        }
+
+        // --- Equip shield ---
+        ItemStack currentOffhand = squire.getItemBySlot(EquipmentSlot.OFFHAND);
+        if (!isShield(currentOffhand)) {
+            for (int i = 0; i < inv.getContainerSize(); i++) {
+                ItemStack candidate = inv.getItem(i);
+                if (isShield(candidate) && !isCursed(candidate)) {
+                    swapEquipmentFromSlot(squire, EquipmentSlot.OFFHAND, inv, i);
+                    break;
                 }
             }
         }

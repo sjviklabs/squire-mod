@@ -76,6 +76,11 @@ public class SquireAI {
     public ChestHandler getChest() { return chest; }
     public PatrolHandler getPatrol() { return patrol; }
 
+    /** Check if the state machine is currently in a specific state. */
+    public boolean isInState(SquireAIState state) {
+        return machine.getCurrentState() == state;
+    }
+
     /** Convenience: delegates to SquireEntity's ProgressionHandler. */
     public void awardKillXP() { squire.getProgression().addKillXP(); }
     public void awardMineXP() { squire.getProgression().addMineXP(); }

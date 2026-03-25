@@ -3,6 +3,7 @@
   "item.squire.squire_badge": "Squire's Crest",
   "item.squire.squire_lance": "Squire's Lance",
   "item.squire.squire_shield": "Squire's Shield",
+  "item.squire.squire_bow": "Squire's Recurve Bow",
   "item.squire.squire_helmet": "Squire's Helm",
   "item.squire.squire_chestplate": "Squire's Chestplate",
   "item.squire.squire_leggings": "Squire's Greaves",
@@ -15,5 +16,18 @@
   "squire.crest.no_squire": "You don't have an active squire",
   "squire.crest.recall": "Recalling your squire...",
   "squire.death.message": "Your squire has fallen at [%s, %s, %s]!",
-  "block.squire.signpost": "Patrol Signpost"
+  "block.squire.signpost": "Patrol Signpost",
+
+  "key.categories.squire": "Squire",
+  "key.squire.radial_menu": "Radial Command Menu",
+
+  "squire.radial.title": "Squire Commands",
+  "squire.radial.follow": "Follow",
+  "squire.radial.guard": "Guard",
+  "squire.radial.patrol": "Patrol",
+  "squire.radial.stay": "Stay",
+  "squire.radial.store": "Store",
+  "squire.radial.fetch": "Fetch",
+  "squire.radial.mount": "Mount",
+  "squire.radial.inventory": "Inventory"
 }

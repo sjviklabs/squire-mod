@@ -6,6 +6,7 @@ import com.sjviklabs.squire.init.ModBlocks;
 import com.sjviklabs.squire.init.ModEntities;
 import com.sjviklabs.squire.init.ModItems;
 import com.sjviklabs.squire.init.ModMenuTypes;
+import com.sjviklabs.squire.network.SquireCommandPayload;
 import com.sjviklabs.squire.network.SquireModePayload;
 import org.slf4j.Logger;
 
@@ -37,5 +38,6 @@ public class SquireMod {
 
         // Register network payloads
         modEventBus.addListener(SquireModePayload::register);
+        modEventBus.addListener(SquireCommandPayload::register);
     }
 }
