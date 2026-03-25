@@ -546,6 +546,7 @@ public class SquireEntity extends TamableAnimal implements RangedAttackMob {
                 // Skip equip check while mining/placing — prevents weapon overwriting the
                 // selected tool mid-break, which causes the wrong item to render in hand.
                 if (!isInWorkState()) {
+                    SquireEquipmentHelper.tryCraftBasicGear(this);
                     SquireEquipmentHelper.runFullEquipCheck(this);
                 }
             }

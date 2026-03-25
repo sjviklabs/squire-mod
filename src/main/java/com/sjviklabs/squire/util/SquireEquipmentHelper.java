@@ -12,10 +12,13 @@ import com.sjviklabs.squire.util.SquireAbilities;
 import net.minecraft.world.item.ArmorItem;
 import net.minecraft.world.item.AxeItem;
 import net.minecraft.world.item.BowItem;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.item.ShieldItem;
 import net.minecraft.world.item.SwordItem;
 import net.minecraft.sounds.SoundEvents;
+import net.minecraft.tags.ItemTags;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.item.component.ItemAttributeModifiers;
 import net.minecraft.world.item.enchantment.Enchantment;
@@ -175,6 +178,173 @@ public final class SquireEquipmentHelper {
                         break;
                     }
                 }
+            }
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // Auto-crafting: basic gear from scavenged materials
+    // ------------------------------------------------------------------
+
+    /**
+     * If the squire has no melee weapon (equipped or in inventory), attempt to craft
+     * a wooden sword from 2 planks + 1 stick. If the squire has no shield (equipped or
+     * in inventory), attempt to craft one from 6 planks + 1 iron ingot.
+     * <p>
+     * Called periodically alongside {@link #runFullEquipCheck}. Only consumes materials
+     * when crafting succeeds. Crafted items go into inventory (equip check will pick
+     * them up on the next cycle).
+     */
+    public static void tryCraftBasicGear(SquireEntity squire) {
+        if (!com.sjviklabs.squire.config.SquireConfig.autoCraftEnabled.get()) return;
+
+        SquireInventory inv = squire.getSquireInventory();
+
+        // --- Craft a wooden sword if squire has no melee weapon ---
+        if (!hasMeleeWeapon(squire, inv)) {
+            int planksNeeded = 2;
+            int sticksNeeded = 1;
+            if (countPlanks(inv) >= planksNeeded && countItem(inv, Items.STICK) >= sticksNeeded) {
+                consumePlanks(inv, planksNeeded);
+                consumeItem(inv, Items.STICK, sticksNeeded);
+                inv.addItem(new ItemStack(Items.WOODEN_SWORD));
+                squire.playSound(SoundEvents.VILLAGER_WORK_TOOLSMITH, 0.8F, 1.0F);
+                var log = squire.getActivityLog();
+                if (log != null) {
+                    log.log("CRAFT", "Crafted a wooden sword from planks and sticks");
+                }
+            }
+        }
+
+        // --- Craft a bow if squire has ranged ability, no bow, and has arrows ---
+        if (SquireAbilities.hasRangedCombat(squire) && !hasBow(squire, inv) && squire.hasArrows()) {
+            int sticksNeeded = 3;
+            int stringNeeded = 3;
+            if (countItem(inv, Items.STICK) >= sticksNeeded && countItem(inv, Items.STRING) >= stringNeeded) {
+                consumeItem(inv, Items.STICK, sticksNeeded);
+                consumeItem(inv, Items.STRING, stringNeeded);
+                inv.addItem(new ItemStack(Items.BOW));
+                squire.playSound(SoundEvents.VILLAGER_WORK_FLETCHER, 0.8F, 1.0F);
+                var log = squire.getActivityLog();
+                if (log != null) {
+                    log.log("CRAFT", "Crafted a bow from sticks and string");
+                }
+            }
+        }
+
+        // --- Craft arrows if squire has a bow but few arrows ---
+        if (hasBow(squire, inv) && countItem(inv, Items.ARROW) < 8) {
+            if (countItem(inv, Items.FLINT) >= 1
+                    && countItem(inv, Items.STICK) >= 1
+                    && countItem(inv, Items.FEATHER) >= 1) {
+                consumeItem(inv, Items.FLINT, 1);
+                consumeItem(inv, Items.STICK, 1);
+                consumeItem(inv, Items.FEATHER, 1);
+                inv.addItem(new ItemStack(Items.ARROW, 4));
+                squire.playSound(SoundEvents.VILLAGER_WORK_FLETCHER, 0.6F, 1.2F);
+                var log = squire.getActivityLog();
+                if (log != null) {
+                    log.log("CRAFT", "Crafted 4 arrows from flint, sticks, and feathers");
+                }
+            }
+        }
+
+        // --- Craft a shield if squire has no shield ---
+        if (!hasShieldAnywhere(squire, inv)) {
+            int planksNeeded = 6;
+            int ironNeeded = 1;
+            if (countPlanks(inv) >= planksNeeded && countItem(inv, Items.IRON_INGOT) >= ironNeeded) {
+                consumePlanks(inv, planksNeeded);
+                consumeItem(inv, Items.IRON_INGOT, ironNeeded);
+                inv.addItem(new ItemStack(Items.SHIELD));
+                squire.playSound(SoundEvents.VILLAGER_WORK_TOOLSMITH, 0.8F, 1.0F);
+                var log = squire.getActivityLog();
+                if (log != null) {
+                    log.log("CRAFT", "Crafted a shield from planks and iron");
+                }
+            }
+        }
+    }
+
+    /** Check if squire has a bow equipped or in inventory. */
+    private static boolean hasBow(SquireEntity squire, SquireInventory inv) {
+        if (squire.getItemBySlot(EquipmentSlot.MAINHAND).getItem() instanceof BowItem) return true;
+        for (int i = 0; i < inv.getContainerSize(); i++) {
+            if (inv.getItem(i).getItem() instanceof BowItem) return true;
+        }
+        return false;
+    }
+
+    /** Check if squire has any melee weapon (SwordItem or AxeItem) equipped or in inventory. */
+    private static boolean hasMeleeWeapon(SquireEntity squire, SquireInventory inv) {
+        ItemStack mainhand = squire.getItemBySlot(EquipmentSlot.MAINHAND);
+        if (mainhand.getItem() instanceof SwordItem || mainhand.getItem() instanceof AxeItem) return true;
+
+        for (int i = 0; i < inv.getContainerSize(); i++) {
+            ItemStack stack = inv.getItem(i);
+            if (stack.getItem() instanceof SwordItem || stack.getItem() instanceof AxeItem) return true;
+        }
+        return false;
+    }
+
+    /** Check if squire has any shield equipped or in inventory. */
+    private static boolean hasShieldAnywhere(SquireEntity squire, SquireInventory inv) {
+        if (isShield(squire.getItemBySlot(EquipmentSlot.OFFHAND))) return true;
+
+        for (int i = 0; i < inv.getContainerSize(); i++) {
+            if (isShield(inv.getItem(i))) return true;
+        }
+        return false;
+    }
+
+    /** Count total planks (any wood type) in inventory using the ItemTag. */
+    private static int countPlanks(SquireInventory inv) {
+        int count = 0;
+        for (int i = 0; i < inv.getContainerSize(); i++) {
+            ItemStack stack = inv.getItem(i);
+            if (!stack.isEmpty() && stack.is(ItemTags.PLANKS)) {
+                count += stack.getCount();
+            }
+        }
+        return count;
+    }
+
+    /** Count total of a specific item in inventory. */
+    private static int countItem(SquireInventory inv, Item item) {
+        int count = 0;
+        for (int i = 0; i < inv.getContainerSize(); i++) {
+            ItemStack stack = inv.getItem(i);
+            if (!stack.isEmpty() && stack.getItem() == item) {
+                count += stack.getCount();
+            }
+        }
+        return count;
+    }
+
+    /** Consume N planks (any wood type) from inventory. */
+    private static void consumePlanks(SquireInventory inv, int amount) {
+        int remaining = amount;
+        for (int i = 0; i < inv.getContainerSize() && remaining > 0; i++) {
+            ItemStack stack = inv.getItem(i);
+            if (!stack.isEmpty() && stack.is(ItemTags.PLANKS)) {
+                int take = Math.min(remaining, stack.getCount());
+                stack.shrink(take);
+                if (stack.isEmpty()) inv.setItem(i, ItemStack.EMPTY);
+                remaining -= take;
+            }
+        }
+    }
+
+    /** Consume N of a specific item from inventory. */
+    private static void consumeItem(SquireInventory inv, Item item, int amount) {
+        int remaining = amount;
+        for (int i = 0; i < inv.getContainerSize() && remaining > 0; i++) {
+            ItemStack stack = inv.getItem(i);
+            if (!stack.isEmpty() && stack.getItem() == item) {
+                int take = Math.min(remaining, stack.getCount());
+                stack.shrink(take);
+                if (stack.isEmpty()) inv.setItem(i, ItemStack.EMPTY);
+                remaining -= take;
             }
         }
     }

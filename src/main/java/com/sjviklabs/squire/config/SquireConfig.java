@@ -92,6 +92,9 @@ public final class SquireConfig {
     public static final ModConfigSpec.IntValue rangedCooldownTicks;
     public static final ModConfigSpec.DoubleValue rangedInaccuracy;
 
+    // --- Auto-crafting ---
+    public static final ModConfigSpec.BooleanValue autoCraftEnabled;
+
     // --- Tick intervals ---
     public static final ModConfigSpec.IntValue itemScanInterval;
     public static final ModConfigSpec.IntValue equipCheckInterval;
@@ -301,6 +304,13 @@ public final class SquireConfig {
         patrolMaxRouteLength = builder
                 .comment("Maximum number of signposts in a patrol route.")
                 .defineInRange("maxRouteLength", 20, 2, 50);
+        builder.pop();
+
+        // ---- Auto-crafting ----
+        builder.push("autoCraft");
+        autoCraftEnabled = builder
+                .comment("When true, squires craft a wooden sword and shield from inventory materials if unarmed.")
+                .define("enabled", true);
         builder.pop();
 
         // ---- Tick intervals ----

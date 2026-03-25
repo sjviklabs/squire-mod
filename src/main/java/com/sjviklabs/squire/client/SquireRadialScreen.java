@@ -49,14 +49,15 @@ public class SquireRadialScreen extends Screen {
 
     private static final int SEGMENTS_PER_WEDGE = 20;
 
-    // Colors (ARGB) — high opacity so text is crisp against the game
-    private static final int COLOR_SCREEN_DIM = 0xA0000000;
-    private static final int COLOR_BG = 0xF01A1A2E;
-    private static final int COLOR_HOVER = 0xF0D4AF37;
+    // Colors (ARGB) — semi-transparent with strong contrast for readability
+    private static final int COLOR_SCREEN_DIM = 0x60000000;
+    private static final int COLOR_BG = 0xB01A1A2E;
+    private static final int COLOR_HOVER = 0xC0D4AF37;
     private static final int COLOR_TEXT = 0xFFFFFFFF;
     private static final int COLOR_TEXT_HOVER = 0xFFFFFF00;
-    private static final int COLOR_CENTER = 0xF0101020;
-    private static final int COLOR_SEPARATOR = 0x60FFFFFF;
+    private static final int COLOR_CENTER = 0xB0101020;
+    private static final int COLOR_SEPARATOR = 0xA0FFFFFF;
+    private static final int COLOR_RING_BORDER = 0xC0888888;
 
     private final int squireEntityId;
     private int hoveredWedge = -1;
@@ -69,6 +70,15 @@ public class SquireRadialScreen extends Screen {
     @Override
     public boolean isPauseScreen() {
         return false;
+    }
+
+    /**
+     * Override to prevent Minecraft's default screen blur effect.
+     * We draw our own lightweight dim in render() instead.
+     */
+    @Override
+    public void renderBackground(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+        // No-op: skip the vanilla blurred background
     }
 
     @Override
@@ -118,6 +128,10 @@ public class SquireRadialScreen extends Screen {
 
         // Center circle
         drawFilledCircle(graphics, cx, cy, INNER_RADIUS, COLOR_CENTER);
+
+        // Ring border outlines (inner + outer edges) for crisp definition
+        drawCircleOutline(graphics, cx, cy, INNER_RADIUS, COLOR_RING_BORDER);
+        drawCircleOutline(graphics, cx, cy, OUTER_RADIUS, COLOR_RING_BORDER);
 
         // Wedge labels — placed at the midpoint angle of each wedge
         for (int i = 0; i < WEDGE_COUNT; i++) {
@@ -262,6 +276,37 @@ public class SquireRadialScreen extends Screen {
 
         buf.addVertex(matrix, x1, y1, 0.0F).setColor(r, g, b, a);
         buf.addVertex(matrix, x2, y2, 0.0F).setColor(r, g, b, a);
+
+        BufferUploader.drawWithShader(buf.buildOrThrow());
+        RenderSystem.disableBlend();
+    }
+
+    /**
+     * Draw a circle outline (ring of line segments) at (cx, cy) with given radius.
+     */
+    private void drawCircleOutline(GuiGraphics graphics, int cx, int cy, float radius, int color) {
+        float a = ((color >> 24) & 0xFF) / 255.0F;
+        float r = ((color >> 16) & 0xFF) / 255.0F;
+        float g = ((color >> 8) & 0xFF) / 255.0F;
+        float b = (color & 0xFF) / 255.0F;
+
+        RenderSystem.enableBlend();
+        RenderSystem.defaultBlendFunc();
+        RenderSystem.setShader(GameRenderer::getPositionColorShader);
+
+        Matrix4f matrix = graphics.pose().last().pose();
+        int segments = 64;
+        BufferBuilder buf = Tesselator.getInstance().begin(
+                VertexFormat.Mode.DEBUG_LINES, DefaultVertexFormat.POSITION_COLOR);
+
+        for (int i = 0; i < segments; i++) {
+            float angle1 = (float) (2.0 * Math.PI * i / segments);
+            float angle2 = (float) (2.0 * Math.PI * (i + 1) / segments);
+            buf.addVertex(matrix, cx + (float) Math.sin(angle1) * radius,
+                    cy - (float) Math.cos(angle1) * radius, 0.0F).setColor(r, g, b, a);
+            buf.addVertex(matrix, cx + (float) Math.sin(angle2) * radius,
+                    cy - (float) Math.cos(angle2) * radius, 0.0F).setColor(r, g, b, a);
+        }
 
         BufferUploader.drawWithShader(buf.buildOrThrow());
         RenderSystem.disableBlend();
