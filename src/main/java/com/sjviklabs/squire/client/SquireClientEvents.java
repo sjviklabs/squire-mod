@@ -21,38 +21,27 @@ import java.util.List;
 @EventBusSubscriber(modid = SquireMod.MODID, bus = EventBusSubscriber.Bus.GAME, value = Dist.CLIENT)
 public class SquireClientEvents {
 
-    private static boolean wasKeyDown = false;
     /**
-     * Each client tick, check if the radial menu keybind is pressed.
-     * If pressed while looking at or near a squire, open the radial screen.
+     * Each client tick, consume the keybind press and open the radial screen.
+     * Once open, the screen handles its own close via keyReleased/mouseClicked.
+     * We do NOT try to close the screen from here — that causes flicker because
+     * isDown() reports false for a frame when a Screen captures input.
      */
     @SubscribeEvent
     public static void onClientTick(ClientTickEvent.Post event) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null || mc.level == null) return;
-        // Don't process keybind while another screen is open (except our radial screen)
-        if (mc.screen != null && !(mc.screen instanceof SquireRadialScreen)) return;
+        if (mc.screen != null) return; // Don't open while any screen is showing
 
-        boolean isKeyDown = SquireKeybinds.RADIAL_MENU.isDown();
-
-        // Detect key press (rising edge)
-        if (isKeyDown && !wasKeyDown && mc.screen == null) {
+        // consumeClick() returns true once per key press (rising edge, no repeat)
+        while (SquireKeybinds.RADIAL_MENU.consumeClick()) {
             SquireEntity target = findTargetSquire(mc);
             if (target != null) {
                 mc.setScreen(new SquireRadialScreen(target));
             }
         }
-
-        // Detect key release while screen is open — the screen handles this via keyReleased,
-        // but as a fallback, close the screen if the key is released
-        if (!isKeyDown && wasKeyDown && mc.screen instanceof SquireRadialScreen) {
-            // The screen's keyReleased should have handled dispatch already,
-            // but close it if still open
-            mc.screen.onClose();
-        }
-
-        wasKeyDown = isKeyDown;
     }
+
     /**
      * Find the squire the player is looking at, or the nearest owned squire within 8 blocks.
      * Prefers crosshair-targeted squire over proximity.

@@ -165,6 +165,18 @@ Track what was done each session. Keep it short.
 - Added both as Phase 5a.5 items 3-4 in roadmap
 - Next: Rebuild and retest bow fixes, then start Visual Progression or Radial Menu
 
+### 2026-03-25 (Session 3)
+- Built Radial Command Menu: SquireRadialScreen, SquireKeybinds, SquireClientEvents, SquireCommandPayload
+- Fixed arrow crash (BowItem guard in performRangedAttack)
+- Fixed radial menu flicker (consumeClick + keyPressed toggle, not isDown/keyReleased)
+- Fixed radial menu angle inversion (wedge 0 now renders at top to match hover detection)
+- Improved radial menu visuals: larger wheel, opaque wedges, screen dim, separator lines
+- Fixed horseback movement: horse.getNavigation() doesn't work when squire is controlling passenger; switched to setting squire's yRot/zza/xxa to drive horse via passenger input
+- Fixed mounted combat: added mount.isMounted() guard on regular combat entry so mounted squires go to MOUNTED_COMBAT instead of COMBAT_APPROACH
+- Fixed mob targeting: changed from Monster.class to Mob.class with Enemy interface predicate (covers Slime, MagmaCube, Phantom, Ghast, Shulker, etc.)
+- WIP: Custom squire weapons (lance, bow) have rendering/equip issues. Squire uses vanilla gear for now. Lance still works as player command tool.
+- Next: Test horseback + mob targeting fixes, commit, then continue with Phase 5a.5
+
 ---
 
 ## Version Bump Checklist (when Phase 5a complete)

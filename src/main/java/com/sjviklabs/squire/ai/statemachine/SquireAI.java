@@ -147,6 +147,7 @@ public class SquireAI {
 
     private void registerCombatTransitions() {
         // Enter combat — choose melee or ranged based on equipment + level
+        // Skip if already in combat OR if mounted (mounted combat is handled separately)
         machine.addTransition(new AITransition(
                 null,
                 () -> {
@@ -154,6 +155,7 @@ public class SquireAI {
                     if (state == SquireAIState.COMBAT_APPROACH || state == SquireAIState.COMBAT_ATTACK
                             || state == SquireAIState.COMBAT_RANGED)
                         return false;
+                    if (mount.isMounted()) return false;
                     if (squire.isOrderedToSit()) return false;
                     return combat.hasTarget();
                 },

@@ -246,12 +246,16 @@ public class CombatHandler {
         if (squire.isPassenger() && squire.getMainHandItem().getItem() instanceof SquireLanceItem) {
             return 6.0 * 6.0;
         }
-        // On-foot lance: 4.5 reach (handled by ENTITY_INTERACTION_RANGE attribute on the item)
-        // but AI needs to know the reach for approach distance
+        // On-foot lance: 4.5 reach
         if (squire.getMainHandItem().getItem() instanceof SquireLanceItem) {
             return 4.5 * 4.5;
         }
+        // All other weapons: 1.5 block reach minimum so the squire can land hits
+        // without standing inside the target's hitbox
+        double baseReach = 1.5;
         double width = squire.getBbWidth();
-        return width * 2.0D * width * 2.0D + target.getBbWidth();
+        double vanillaReach = Math.sqrt(width * 2.0D * width * 2.0D + target.getBbWidth());
+        double reach = Math.max(baseReach, vanillaReach);
+        return reach * reach;
     }
 }

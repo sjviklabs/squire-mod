@@ -41,6 +41,8 @@ import net.minecraft.world.entity.ai.goal.target.HurtByTargetGoal;
 import net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal;
 import net.minecraft.world.entity.ai.goal.target.OwnerHurtByTargetGoal;
 import net.minecraft.world.entity.ai.goal.target.OwnerHurtTargetGoal;
+import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.entity.monster.Monster;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.BowItem;
@@ -193,8 +195,10 @@ public class SquireEntity extends TamableAnimal implements RangedAttackMob {
         this.targetSelector.addGoal(1, new OwnerHurtByTargetGoal(this));
         this.targetSelector.addGoal(2, new OwnerHurtTargetGoal(this));
         this.targetSelector.addGoal(3, new HurtByTargetGoal(this));
-        // Proactive aggro — engage hostile mobs within range without waiting to be hit
-        this.targetSelector.addGoal(4, new NearestAttackableTargetGoal<>(this, Monster.class, true));
+        // Proactive aggro — engage any mob implementing Enemy (Monster, Slime, MagmaCube,
+        // Phantom, Ghast, Shulker, etc.) without waiting to be hit first
+        this.targetSelector.addGoal(4, new NearestAttackableTargetGoal<>(this, Mob.class, 10, true, false,
+                (entity) -> entity instanceof Enemy));
 
         // All behavior goals (sit, combat, eat, follow, pickup, look) are now
         // handled by SquireAI's tick-rate state machine. See aiStep().
@@ -409,6 +413,8 @@ public class SquireEntity extends TamableAnimal implements RangedAttackMob {
         if (arrowStack.isEmpty()) return;
 
         ItemStack weapon = this.getMainHandItem();
+        // Guard: only fire if holding a bow. Prevents AbstractArrow crash on invalid weapon.
+        if (!(weapon.getItem() instanceof BowItem)) return;
         AbstractArrow arrow = ProjectileUtil.getMobArrow(this, arrowStack, distanceFactor, weapon);
 
         double dx = target.getX() - this.getX();
@@ -531,6 +537,10 @@ public class SquireEntity extends TamableAnimal implements RangedAttackMob {
                 this.addEffect(new MobEffectInstance(MobEffects.REGENERATION, 100, 0, false, false));
             }
 
+            // Passive item pickup: absorb items within reach without changing AI state.
+            // This runs every tick so the squire grabs loot it walks over, like a player.
+            pickUpNearbyItems();
+
             if (++this.equipCheckTimer >= SquireConfig.equipCheckInterval.get()) {
                 this.equipCheckTimer = 0;
                 // Skip equip check while mining/placing — prevents weapon overwriting the
@@ -551,6 +561,43 @@ public class SquireEntity extends TamableAnimal implements RangedAttackMob {
         SquireAIState state = this.squireAI.getMachine().getCurrentState();
         return state == SquireAIState.MINING_APPROACH || state == SquireAIState.MINING_BREAK
                 || state == SquireAIState.PLACING_APPROACH || state == SquireAIState.PLACING_BLOCK;
+    }
+
+    /**
+     * Passively pick up item entities within 1.5 blocks. Runs every tick in aiStep()
+     * so the squire collects loot it walks over regardless of AI state.
+     * Skips items with a pickup delay, items that won't fit in inventory, and junk.
+     */
+    private void pickUpNearbyItems() {
+        if (this.isOrderedToSit()) return;
+
+        double range = 1.5;
+        var box = this.getBoundingBox().inflate(range);
+        var items = this.level().getEntitiesOfClass(
+                net.minecraft.world.entity.item.ItemEntity.class, box,
+                item -> item.isAlive() && !item.hasPickUpDelay());
+
+        for (var itemEntity : items) {
+            ItemStack stack = itemEntity.getItem();
+            if (stack.isEmpty()) continue;
+            if (!this.inventory.canAddItem(stack)) continue;
+
+            ItemStack original = stack.copy();
+            ItemStack remainder = this.inventory.addItem(stack.copy());
+
+            if (remainder.isEmpty()) {
+                itemEntity.discard();
+            } else {
+                itemEntity.setItem(remainder);
+            }
+
+            SquireEquipmentHelper.tryAutoEquip(this, original);
+
+            if (this.activityLog != null) {
+                this.activityLog.log("ITEM", "Picked up " + original.getCount()
+                        + "x " + original.getHoverName().getString());
+            }
+        }
     }
 
     /** Accessor for debug/admin commands. Null before first server-side aiStep(). */
