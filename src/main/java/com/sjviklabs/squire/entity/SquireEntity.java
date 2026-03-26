@@ -4,13 +4,12 @@ import com.sjviklabs.squire.ai.SquireActivityLog;
 import com.sjviklabs.squire.ai.handler.ProgressionHandler;
 import com.sjviklabs.squire.ai.statemachine.SquireAI;
 import com.sjviklabs.squire.ai.statemachine.SquireAIState;
-import com.sjviklabs.squire.compat.MineColoniesCompat;
-import com.sjviklabs.squire.compat.ModCompat;
 import com.sjviklabs.squire.config.SquireConfig;
 import com.sjviklabs.squire.init.ModItems;
 import com.sjviklabs.squire.util.SquireAbilities;
 import com.sjviklabs.squire.util.SquireChunkLoader;
 import com.sjviklabs.squire.util.SquireEquipmentHelper;
+import com.sjviklabs.squire.util.TaskQueue;
 import com.sjviklabs.squire.inventory.SquireEquipmentContainer;
 import com.sjviklabs.squire.inventory.SquireInventory;
 import com.sjviklabs.squire.inventory.SquireMenu;
@@ -43,8 +42,6 @@ import net.minecraft.world.entity.ai.goal.target.HurtByTargetGoal;
 import net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal;
 import net.minecraft.world.entity.ai.goal.target.OwnerHurtByTargetGoal;
 import net.minecraft.world.entity.ai.goal.target.OwnerHurtTargetGoal;
-import net.minecraft.world.entity.Mob;
-import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.entity.monster.Monster;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.BowItem;
@@ -75,6 +72,9 @@ public class SquireEntity extends TamableAnimal implements RangedAttackMob {
     // Appearance: false = wide arms (Steve/male), true = slim arms (Alex/female)
     private static final EntityDataAccessor<Boolean> SLIM_MODEL =
             SynchedEntityData.defineId(SquireEntity.class, EntityDataSerializers.BOOLEAN);
+    // Client-synched flag for bow draw arm pose
+    private static final EntityDataAccessor<Boolean> DRAWING_BOW =
+            SynchedEntityData.defineId(SquireEntity.class, EntityDataSerializers.BOOLEAN);
 
     public static final byte MODE_FOLLOW = 0;
     public static final byte MODE_STAY = 1;
@@ -89,6 +89,9 @@ public class SquireEntity extends TamableAnimal implements RangedAttackMob {
     // ---- AI ----
     private SquireAI squireAI;
     private SquireActivityLog activityLog;
+
+    // ---- Task Queue ----
+    private final TaskQueue taskQueue = new TaskQueue();
 
     // ---- Undying ability cooldown (ticks until revive is available again) ----
     private int undyingCooldown = 0;
@@ -130,6 +133,7 @@ public class SquireEntity extends TamableAnimal implements RangedAttackMob {
         builder.define(IS_SPRINTING, false);
         builder.define(SQUIRE_LEVEL, 0);
         builder.define(SLIM_MODEL, false);
+        builder.define(DRAWING_BOW, false);
     }
 
     public byte getSquireMode() {
@@ -184,6 +188,15 @@ public class SquireEntity extends TamableAnimal implements RangedAttackMob {
         this.entityData.set(SLIM_MODEL, slim);
     }
 
+    /** Client-synched flag: true when squire is drawing a bow in ranged combat. */
+    public boolean isDrawingBow() {
+        return this.entityData.get(DRAWING_BOW);
+    }
+
+    public void setDrawingBow(boolean drawing) {
+        this.entityData.set(DRAWING_BOW, drawing);
+    }
+
     // ================================================================
     // AI goals
     // ================================================================
@@ -197,14 +210,8 @@ public class SquireEntity extends TamableAnimal implements RangedAttackMob {
         this.targetSelector.addGoal(1, new OwnerHurtByTargetGoal(this));
         this.targetSelector.addGoal(2, new OwnerHurtTargetGoal(this));
         this.targetSelector.addGoal(3, new HurtByTargetGoal(this));
-        // Proactive aggro — engage any mob implementing Enemy (Monster, Slime, MagmaCube,
-        // Phantom, Ghast, Shulker, etc.) without waiting to be hit first.
-        // MineColonies compat: also excludes colonists from targeting, includes raiders.
-        this.targetSelector.addGoal(4, new NearestAttackableTargetGoal<>(this, Mob.class, 10, true, false,
-                (entity) -> {
-                    if (MineColoniesCompat.isFriendly(entity)) return false;
-                    return entity instanceof Enemy || MineColoniesCompat.isRaider(entity);
-                }));
+        // Proactive aggro — engage hostile mobs within range without waiting to be hit
+        this.targetSelector.addGoal(4, new NearestAttackableTargetGoal<>(this, Monster.class, true));
 
         // All behavior goals (sit, combat, eat, follow, pickup, look) are now
         // handled by SquireAI's tick-rate state machine. See aiStep().
@@ -308,6 +315,7 @@ public class SquireEntity extends TamableAnimal implements RangedAttackMob {
             tag.putUUID("HorseUUID", this.squireAI.getMount().getHorseUUID());
         }
         this.progression.save(tag);
+        tag.put("TaskQueue", this.taskQueue.save());
     }
 
     @Override
@@ -329,6 +337,9 @@ public class SquireEntity extends TamableAnimal implements RangedAttackMob {
             this.pendingHorseUUID = tag.getUUID("HorseUUID");
         }
         this.progression.load(tag);
+        if (tag.contains("TaskQueue")) {
+            this.taskQueue.load(tag.getCompound("TaskQueue"));
+        }
     }
 
     // ================================================================
@@ -471,15 +482,11 @@ public class SquireEntity extends TamableAnimal implements RangedAttackMob {
             return;
         }
         if (this.isInWater() && this.isEffectiveAi()) {
-            this.moveRelative(0.14F, travelVector); // Faster than default 0.02
+            this.moveRelative(0.12F, travelVector);
             this.move(net.minecraft.world.entity.MoverType.SELF, this.getDeltaMovement());
-            this.setDeltaMovement(this.getDeltaMovement().scale(0.78D)); // Less drag
+            this.setDeltaMovement(this.getDeltaMovement().scale(0.72D));
             if (this.horizontalCollision && this.onClimbable()) {
                 this.setDeltaMovement(this.getDeltaMovement().x, 0.3D, this.getDeltaMovement().z);
-            }
-            // Swim upward if submerged — stay at surface
-            if (this.isUnderWater()) {
-                this.setDeltaMovement(this.getDeltaMovement().add(0, 0.04, 0));
             }
         } else {
             super.travel(travelVector);
@@ -492,17 +499,6 @@ public class SquireEntity extends TamableAnimal implements RangedAttackMob {
     // ================================================================
 
     private int equipCheckTimer = 0;
-
-    // ---- Safety rails: stuck detection ----
-    private double lastSafeX, lastSafeY, lastSafeZ;
-    private int stuckTicks = 0;
-
-    // ---- Safety rails: owner teleport detection (Waystones, /tp, etc.) ----
-    private double lastOwnerX, lastOwnerZ;
-    private boolean ownerPosInitialized = false;
-    private static final int STUCK_CHECK_INTERVAL = 100; // 5 seconds
-    private static final int STUCK_JUMP_THRESHOLD = 200; // 10 seconds
-    private static final int STUCK_TELEPORT_THRESHOLD = 400; // 20 seconds
 
     @Override
     public void aiStep() {
@@ -558,40 +554,11 @@ public class SquireEntity extends TamableAnimal implements RangedAttackMob {
                 this.addEffect(new MobEffectInstance(MobEffects.REGENERATION, 100, 0, false, false));
             }
 
-            // ---- Safety rails ----
-            tickSafetyRails();
-
-            // MineColonies raid defense: boost follow range during active raids
-            // so squire detects raiders from further away. Check every 2 seconds.
-            if (this.tickCount % 40 == 0 && MineColoniesCompat.isActive()) {
-                double raidRange = MineColoniesCompat.getRaidAggroRange(this);
-                double currentFollow = this.getAttributeValue(Attributes.FOLLOW_RANGE);
-                double baseFollow = 32.0; // matches createAttributes()
-                if (raidRange > SquireConfig.aggroRange.get() && currentFollow <= baseFollow) {
-                    // Raid active — temporarily boost follow range
-                    this.getAttribute(Attributes.FOLLOW_RANGE).setBaseValue(raidRange + 16.0);
-                    if (this.activityLog != null) {
-                        this.activityLog.log("RAID", "Colony raid detected! Boosting aggro range.");
-                    }
-                } else if (raidRange <= SquireConfig.aggroRange.get() && currentFollow > baseFollow) {
-                    // Raid over — restore normal range
-                    this.getAttribute(Attributes.FOLLOW_RANGE).setBaseValue(baseFollow);
-                    if (this.activityLog != null) {
-                        this.activityLog.log("RAID", "Raid over. Returning to normal patrol.");
-                    }
-                }
-            }
-
-            // Passive item pickup: absorb items within reach without changing AI state.
-            // This runs every tick so the squire grabs loot it walks over, like a player.
-            pickUpNearbyItems();
-
             if (++this.equipCheckTimer >= SquireConfig.equipCheckInterval.get()) {
                 this.equipCheckTimer = 0;
                 // Skip equip check while mining/placing — prevents weapon overwriting the
                 // selected tool mid-break, which causes the wrong item to render in hand.
                 if (!isInWorkState()) {
-                    SquireEquipmentHelper.tryCraftBasicGear(this);
                     SquireEquipmentHelper.runFullEquipCheck(this);
                 }
             }
@@ -606,261 +573,10 @@ public class SquireEntity extends TamableAnimal implements RangedAttackMob {
         if (this.squireAI == null) return false;
         SquireAIState state = this.squireAI.getMachine().getCurrentState();
         return state == SquireAIState.MINING_APPROACH || state == SquireAIState.MINING_BREAK
-                || state == SquireAIState.PLACING_APPROACH || state == SquireAIState.PLACING_BLOCK;
-    }
-
-    /**
-     * Passively pick up item entities within 1.5 blocks. Runs every tick in aiStep()
-     * so the squire collects loot it walks over regardless of AI state.
-     * Skips items with a pickup delay, items that won't fit in inventory, and junk.
-     */
-    private void pickUpNearbyItems() {
-        if (this.isOrderedToSit()) return;
-
-        double range = 1.5;
-        var box = this.getBoundingBox().inflate(range);
-        var items = this.level().getEntitiesOfClass(
-                net.minecraft.world.entity.item.ItemEntity.class, box,
-                item -> item.isAlive() && !item.hasPickUpDelay());
-
-        for (var itemEntity : items) {
-            ItemStack stack = itemEntity.getItem();
-            if (stack.isEmpty()) continue;
-            if (!this.inventory.canAddItem(stack)) continue;
-
-            ItemStack original = stack.copy();
-            ItemStack remainder = this.inventory.addItem(stack.copy());
-
-            if (remainder.isEmpty()) {
-                itemEntity.discard();
-            } else {
-                itemEntity.setItem(remainder);
-            }
-
-            SquireEquipmentHelper.tryAutoEquip(this, original);
-
-            if (this.activityLog != null) {
-                this.activityLog.log("ITEM", "Picked up " + original.getCount()
-                        + "x " + original.getHoverName().getString());
-            }
-        }
-    }
-
-    // ================================================================
-    // Safety rails — stuck detection, drowning, fall, combat retreat
-    // ================================================================
-
-    private void tickSafetyRails() {
-        tickOwnerTeleportCatchUp();
-        tickStuckDetection();
-        tickDrowningProtection();
-        tickFallProtection();
-        tickCombatRetreat();
-    }
-
-    /**
-     * Detect when the owner teleports (Waystones, /tp, etc.) and emergency-teleport
-     * the squire to follow. Triggers on 100+ block movement in a single tick.
-     */
-    private void tickOwnerTeleportCatchUp() {
-        Player owner = this.getOwner() instanceof Player p ? p : null;
-        if (owner == null) return;
-
-        if (!ownerPosInitialized) {
-            lastOwnerX = owner.getX();
-            lastOwnerZ = owner.getZ();
-            ownerPosInitialized = true;
-            return;
-        }
-
-        if (ModCompat.checkOwnerTeleport(this, owner, lastOwnerX, lastOwnerZ)) {
-            teleportToSafeSpot(owner);
-            if (this.activityLog != null) {
-                this.activityLog.log("SAFETY", "Owner teleported — following to new location");
-            }
-            if (owner instanceof ServerPlayer sp) {
-                sp.sendSystemMessage(Component.literal("Your squire followed you through the teleport!"));
-            }
-        }
-
-        lastOwnerX = owner.getX();
-        lastOwnerZ = owner.getZ();
-    }
-
-    /**
-     * Track squire position. If it hasn't moved significantly while the navigation
-     * system thinks it should be pathing, escalate: try jumping, then emergency teleport.
-     */
-    private void tickStuckDetection() {
-        if (this.isOrderedToSit() || this.isPassenger()) {
-            stuckTicks = 0;
-            return;
-        }
-
-        if (this.tickCount % STUCK_CHECK_INTERVAL == 0) {
-            double dx = this.getX() - lastSafeX;
-            double dy = this.getY() - lastSafeY;
-            double dz = this.getZ() - lastSafeZ;
-            double movedSq = dx * dx + dy * dy + dz * dz;
-
-            boolean isPathing = this.getNavigation().isInProgress();
-
-            if (movedSq < 1.0 && isPathing) {
-                // Squire is trying to move but stuck
-                stuckTicks += STUCK_CHECK_INTERVAL;
-
-                if (stuckTicks >= STUCK_TELEPORT_THRESHOLD) {
-                    // Emergency teleport to owner
-                    Player owner = this.getOwner() instanceof Player p ? p : null;
-                    if (owner != null) {
-                        teleportToSafeSpot(owner);
-                        stuckTicks = 0;
-                        if (this.activityLog != null) {
-                            this.activityLog.log("SAFETY", "Emergency teleport — stuck for "
-                                    + (STUCK_TELEPORT_THRESHOLD / 20) + " seconds");
-                        }
-                    }
-                } else if (stuckTicks >= STUCK_JUMP_THRESHOLD) {
-                    // Try jumping to unstick
-                    if (this.onGround()) {
-                        this.jumpFromGround();
-                    }
-                }
-            } else {
-                stuckTicks = 0;
-            }
-
-            lastSafeX = this.getX();
-            lastSafeY = this.getY();
-            lastSafeZ = this.getZ();
-        }
-    }
-
-    /**
-     * Prevent drowning: apply Water Breathing when submerged. Actively swim upward
-     * when underwater and not sitting. Boost swim speed to keep up with owner.
-     */
-    private void tickDrowningProtection() {
-        if (this.isUnderWater()) {
-            // Water breathing — prevents drowning damage
-            if (!this.hasEffect(MobEffects.WATER_BREATHING)) {
-                this.addEffect(new MobEffectInstance(
-                        MobEffects.WATER_BREATHING, 600, 0, false, false));
-            }
-
-            // Actively swim upward if submerged and not sitting
-            if (!this.isOrderedToSit()) {
-                // Swim toward surface
-                net.minecraft.world.phys.Vec3 motion = this.getDeltaMovement();
-                this.setDeltaMovement(motion.x, Math.max(motion.y, 0.04), motion.z);
-            }
-        }
-
-        // Boost swim speed when in water (not just submerged)
-        if (this.isInWater() && !this.isOrderedToSit()) {
-            if (!this.hasEffect(MobEffects.DOLPHINS_GRACE)) {
-                // Light dolphin's grace effect for swim speed
-                this.addEffect(new MobEffectInstance(
-                        MobEffects.DOLPHINS_GRACE, 100, 0, false, false));
-            }
-        }
-    }
-
-    /**
-     * Prevent lethal falls: apply Slow Falling when falling fast or near void.
-     * Kill the squire cleanly (with drops) before reaching void death zone.
-     */
-    private void tickFallProtection() {
-        // Void protection: if below Y=-50, emergency teleport to owner
-        if (this.getY() < -50.0) {
-            Player owner = this.getOwner() instanceof Player p ? p : null;
-            if (owner != null && owner.getY() > -50.0) {
-                teleportToSafeSpot(owner);
-                if (this.activityLog != null) {
-                    this.activityLog.log("SAFETY", "Rescued from void");
-                }
-            }
-            return;
-        }
-
-        // Slow falling when dropping fast (fall speed > 0.5 blocks/tick)
-        if (!this.onGround() && this.getDeltaMovement().y < -0.5 && !this.isInWater()) {
-            if (!this.hasEffect(MobEffects.SLOW_FALLING)) {
-                this.addEffect(new MobEffectInstance(
-                        MobEffects.SLOW_FALLING, 200, 0, false, false));
-            }
-        }
-    }
-
-    /**
-     * Combat retreat: if health is below 20% and no food in inventory, flee toward owner.
-     * The FLEEING state already exists in the enum — this activates it.
-     */
-    private void tickCombatRetreat() {
-        if (this.squireAI == null) return;
-        SquireAIState state = this.squireAI.getMachine().getCurrentState();
-
-        // Only retreat from active combat states
-        boolean inCombat = state == SquireAIState.COMBAT_APPROACH
-                || state == SquireAIState.COMBAT_ATTACK
-                || state == SquireAIState.COMBAT_RANGED;
-        if (!inCombat) return;
-
-        float hpRatio = this.getHealth() / this.getMaxHealth();
-        if (hpRatio > 0.2F) return; // Above 20%, keep fighting
-
-        // Check if squire has food to heal
-        boolean hasFood = false;
-        for (int i = 0; i < this.inventory.getContainerSize(); i++) {
-            ItemStack stack = this.inventory.getItem(i);
-            if (!stack.isEmpty() && stack.has(net.minecraft.core.component.DataComponents.FOOD)) {
-                hasFood = true;
-                break;
-            }
-        }
-
-        if (!hasFood) {
-            // No food, critically low — flee toward owner
-            Player owner = this.getOwner() instanceof Player p ? p : null;
-            if (owner != null) {
-                this.setTarget(null); // Drop combat target
-                this.getNavigation().moveTo(owner, 1.4); // Sprint away
-                this.setSquireSprinting(true);
-                if (this.activityLog != null && this.tickCount % 60 == 0) {
-                    this.activityLog.log("SAFETY", "Retreating — critically low HP, no food!");
-                }
-            }
-        }
-    }
-
-    /**
-     * Emergency teleport to a safe spot near a target entity.
-     * Tries random offsets, finds solid ground. Used by stuck detection and void rescue.
-     */
-    private void teleportToSafeSpot(Player target) {
-        net.minecraft.core.BlockPos targetPos = target.blockPosition();
-        for (int attempt = 0; attempt < 10; attempt++) {
-            int dx = net.minecraft.util.Mth.randomBetweenInclusive(this.getRandom(), -3, 3);
-            int dz = net.minecraft.util.Mth.randomBetweenInclusive(this.getRandom(), -3, 3);
-            if (Math.abs(dx) <= 1 && Math.abs(dz) <= 1) continue;
-
-            net.minecraft.core.BlockPos check = targetPos.offset(dx, 0, dz);
-            for (int dy = -2; dy <= 2; dy++) {
-                net.minecraft.core.BlockPos pos = check.offset(0, dy, 0);
-                if (this.level().getBlockState(pos.below()).isSolid()
-                        && this.level().getBlockState(pos).isAir()
-                        && this.level().getBlockState(pos.above()).isAir()) {
-                    this.moveTo(pos.getX() + 0.5, pos.getY(), pos.getZ() + 0.5,
-                            this.getYRot(), this.getXRot());
-                    this.getNavigation().stop();
-                    return;
-                }
-            }
-        }
-        // Fallback: teleport directly to target
-        this.moveTo(target.getX(), target.getY(), target.getZ(),
-                this.getYRot(), this.getXRot());
-        this.getNavigation().stop();
+                || state == SquireAIState.PLACING_APPROACH || state == SquireAIState.PLACING_BLOCK
+                || state == SquireAIState.FARM_APPROACH || state == SquireAIState.FARM_WORK
+                || state == SquireAIState.FARM_SCAN
+                || state == SquireAIState.FISHING_APPROACH || state == SquireAIState.FISHING_IDLE;
     }
 
     /** Accessor for debug/admin commands. Null before first server-side aiStep(). */
@@ -873,6 +589,11 @@ public class SquireEntity extends TamableAnimal implements RangedAttackMob {
     @Nullable
     public SquireActivityLog getActivityLog() {
         return this.activityLog;
+    }
+
+    /** Task queue for chaining commands. Always non-null. */
+    public TaskQueue getTaskQueue() {
+        return this.taskQueue;
     }
 
     // ================================================================

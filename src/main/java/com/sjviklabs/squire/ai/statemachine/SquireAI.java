@@ -3,6 +3,8 @@ package com.sjviklabs.squire.ai.statemachine;
 import com.sjviklabs.squire.ai.handler.ChatHandler;
 import com.sjviklabs.squire.ai.handler.ChestHandler;
 import com.sjviklabs.squire.ai.handler.CombatHandler;
+import com.sjviklabs.squire.ai.handler.FarmingHandler;
+import com.sjviklabs.squire.ai.handler.FishingHandler;
 import com.sjviklabs.squire.ai.handler.FollowHandler;
 import com.sjviklabs.squire.ai.handler.ItemHandler;
 import com.sjviklabs.squire.ai.handler.MiningHandler;
@@ -12,6 +14,8 @@ import com.sjviklabs.squire.ai.handler.PlacingHandler;
 import com.sjviklabs.squire.ai.handler.SurvivalHandler;
 import com.sjviklabs.squire.ai.handler.TorchHandler;
 import com.sjviklabs.squire.entity.SquireEntity;
+import com.sjviklabs.squire.util.TaskQueue;
+import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.player.Player;
 
 /**
@@ -42,6 +46,8 @@ public class SquireAI {
     private final MountHandler mount;
     private final ChestHandler chest;
     private final PatrolHandler patrol;
+    private final FarmingHandler farming;
+    private final FishingHandler fishing;
     private int idleTicks;
 
     public SquireAI(SquireEntity squire) {
@@ -58,6 +64,8 @@ public class SquireAI {
         this.mount = new MountHandler(squire);
         this.chest = new ChestHandler(squire);
         this.patrol = new PatrolHandler(squire);
+        this.farming = new FarmingHandler(squire);
+        this.fishing = new FishingHandler(squire);
         registerTransitions();
     }
 
@@ -75,6 +83,8 @@ public class SquireAI {
     public MountHandler getMount() { return mount; }
     public ChestHandler getChest() { return chest; }
     public PatrolHandler getPatrol() { return patrol; }
+    public FarmingHandler getFarming() { return farming; }
+    public FishingHandler getFishing() { return fishing; }
 
     /** Check if the state machine is currently in a specific state. */
     public boolean isInState(SquireAIState state) {
@@ -111,6 +121,8 @@ public class SquireAI {
         registerPlacingTransitions();
         registerChestTransitions();
         registerPatrolTransitions();
+        registerFarmingTransitions();
+        registerFishingTransitions();
         registerPickupTransitions();
         registerIdleTransitions();
     }
@@ -147,7 +159,6 @@ public class SquireAI {
 
     private void registerCombatTransitions() {
         // Enter combat — choose melee or ranged based on equipment + level
-        // Skip if already in combat OR if mounted (mounted combat is handled separately)
         machine.addTransition(new AITransition(
                 null,
                 () -> {
@@ -155,7 +166,6 @@ public class SquireAI {
                     if (state == SquireAIState.COMBAT_APPROACH || state == SquireAIState.COMBAT_ATTACK
                             || state == SquireAIState.COMBAT_RANGED)
                         return false;
-                    if (mount.isMounted()) return false;
                     if (squire.isOrderedToSit()) return false;
                     return combat.hasTarget();
                 },
@@ -547,9 +557,129 @@ public class SquireAI {
         ));
     }
 
+    // ---- Farming (priority 38) ----
+
+    private void registerFarmingTransitions() {
+        // FARM_SCAN: look for next farming task in the area
+        machine.addTransition(new AITransition(
+                SquireAIState.FARM_SCAN,
+                () -> !farming.isFarming(),
+                s -> {
+                    farming.stop();
+                    return SquireAIState.IDLE;
+                },
+                1, 37
+        ));
+
+        machine.addTransition(new AITransition(
+                SquireAIState.FARM_SCAN,
+                farming::isFarming,
+                farming::tickScan,
+                1, 38
+        ));
+
+        // FARM_APPROACH: walk toward target block
+        machine.addTransition(new AITransition(
+                SquireAIState.FARM_APPROACH,
+                () -> !farming.hasTarget(),
+                s -> SquireAIState.FARM_SCAN,
+                1, 37
+        ));
+
+        machine.addTransition(new AITransition(
+                SquireAIState.FARM_APPROACH,
+                farming::hasTarget,
+                farming::tickApproach,
+                1, 38
+        ));
+
+        // FARM_WORK: till, plant, or harvest
+        machine.addTransition(new AITransition(
+                SquireAIState.FARM_WORK,
+                () -> !farming.hasTarget(),
+                s -> SquireAIState.FARM_SCAN,
+                1, 37
+        ));
+
+        machine.addTransition(new AITransition(
+                SquireAIState.FARM_WORK,
+                farming::hasTarget,
+                farming::tickWork,
+                1, 38
+        ));
+
+        // Resume farming after interruption (combat, eating, etc.)
+        machine.addTransition(new AITransition(
+                SquireAIState.IDLE,
+                farming::isFarming,
+                s -> SquireAIState.FARM_SCAN,
+                1, 38
+        ));
+    }
+
+    // ---- Fishing (priority 39) ----
+
+    private void registerFishingTransitions() {
+        // FISHING_APPROACH: walk to water edge
+        machine.addTransition(new AITransition(
+                SquireAIState.FISHING_APPROACH,
+                () -> !fishing.isFishing(),
+                s -> {
+                    fishing.stop();
+                    return SquireAIState.IDLE;
+                },
+                1, 38
+        ));
+
+        machine.addTransition(new AITransition(
+                SquireAIState.FISHING_APPROACH,
+                fishing::isFishing,
+                fishing::tickApproach,
+                1, 39
+        ));
+
+        // FISHING_IDLE: face water, catch fish on cooldown
+        machine.addTransition(new AITransition(
+                SquireAIState.FISHING_IDLE,
+                () -> !fishing.isFishing(),
+                s -> {
+                    fishing.stop();
+                    return SquireAIState.IDLE;
+                },
+                1, 38
+        ));
+
+        machine.addTransition(new AITransition(
+                SquireAIState.FISHING_IDLE,
+                fishing::isFishing,
+                fishing::tickIdle,
+                1, 39
+        ));
+
+        // Resume fishing after interruption
+        machine.addTransition(new AITransition(
+                SquireAIState.IDLE,
+                fishing::isFishing,
+                s -> SquireAIState.FISHING_APPROACH,
+                1, 39
+        ));
+    }
+
     // ---- Idle cosmetics + utility (priority 50) ----
 
     private void registerIdleTransitions() {
+        // Task queue auto-dispatch: when IDLE with queued tasks, pop and execute next
+        machine.addTransition(new AITransition(
+                SquireAIState.IDLE,
+                () -> !squire.getTaskQueue().isEmpty(),
+                s -> {
+                    var task = squire.getTaskQueue().poll();
+                    if (task == null) return SquireAIState.IDLE;
+                    return dispatchQueuedTask(task);
+                },
+                5, 49 // priority 49: after work transitions, before cosmetic idle
+        ));
+
         machine.addTransition(new AITransition(
                 SquireAIState.IDLE,
                 () -> !squire.isOrderedToSit(),
@@ -585,5 +715,76 @@ public class SquireAI {
                 },
                 20, 50
         ));
+    }
+
+    // ================================================================
+    // Task queue dispatch
+    // ================================================================
+
+    /**
+     * Dispatch a queued task by command name. Returns the initial state for
+     * the task, or IDLE if the command is unrecognized.
+     */
+    private SquireAIState dispatchQueuedTask(TaskQueue.SquireTask task) {
+        var log = squire.getActivityLog();
+        String cmd = task.commandName();
+        var args = task.args();
+
+        return switch (cmd) {
+            case "follow" -> {
+                squire.setSquireMode(SquireEntity.MODE_FOLLOW);
+                if (log != null) log.log("QUEUE", "Dispatched: follow");
+                yield SquireAIState.FOLLOWING_OWNER;
+            }
+            case "stay" -> {
+                squire.setSquireMode(SquireEntity.MODE_STAY);
+                if (log != null) log.log("QUEUE", "Dispatched: stay");
+                yield SquireAIState.SITTING;
+            }
+            case "guard" -> {
+                squire.setSquireMode(SquireEntity.MODE_GUARD);
+                if (log != null) log.log("QUEUE", "Dispatched: guard");
+                yield SquireAIState.IDLE;
+            }
+            case "mine" -> {
+                if (args.contains("x") && args.contains("y") && args.contains("z")) {
+                    BlockPos target = new BlockPos(args.getInt("x"), args.getInt("y"), args.getInt("z"));
+                    mining.setTarget(target);
+                    if (log != null) log.log("QUEUE", "Dispatched: mine " + target);
+                    yield SquireAIState.MINING_APPROACH;
+                }
+                if (log != null) log.log("QUEUE", "Mine task missing coordinates");
+                yield SquireAIState.IDLE;
+            }
+            case "farm" -> {
+                if (args.contains("x1") && args.contains("z1") && args.contains("x2") && args.contains("z2")) {
+                    int y = args.contains("y") ? args.getInt("y") : squire.blockPosition().getY();
+                    BlockPos from = new BlockPos(args.getInt("x1"), y, args.getInt("z1"));
+                    BlockPos to = new BlockPos(args.getInt("x2"), y, args.getInt("z2"));
+                    farming.setArea(from, to);
+                    if (log != null) log.log("QUEUE", "Dispatched: farm " + from + " to " + to);
+                    yield SquireAIState.FARM_SCAN;
+                }
+                if (log != null) log.log("QUEUE", "Farm task missing area coordinates");
+                yield SquireAIState.IDLE;
+            }
+            case "fish" -> {
+                boolean started = fishing.startFishing();
+                if (started) {
+                    if (log != null) log.log("QUEUE", "Dispatched: fish");
+                    yield SquireAIState.FISHING_APPROACH;
+                }
+                if (log != null) log.log("QUEUE", "Fish task failed: no water nearby");
+                yield SquireAIState.IDLE;
+            }
+            case "patrol" -> {
+                if (log != null) log.log("QUEUE", "Dispatched: patrol");
+                yield SquireAIState.PATROL_WALK;
+            }
+            default -> {
+                if (log != null) log.log("QUEUE", "Unknown queued command: " + cmd);
+                yield SquireAIState.IDLE;
+            }
+        };
     }
 }

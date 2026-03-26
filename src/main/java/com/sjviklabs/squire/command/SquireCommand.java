@@ -12,7 +12,7 @@ import com.sjviklabs.squire.config.SquireConfig;
 import com.sjviklabs.squire.entity.SquireEntity;
 import com.sjviklabs.squire.init.ModBlocks;
 import com.sjviklabs.squire.init.ModEntities;
-import com.sjviklabs.squire.item.SquireCrestItem;
+import com.sjviklabs.squire.item.SquireLanceItem;
 import com.sjviklabs.squire.util.SquireAbilities;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -195,6 +195,38 @@ public class SquireCommand {
                         )
                         .then(Commands.argument("pos", BlockPosArgument.blockPos())
                                 .executes(ctx -> startGuardPatrol(ctx.getSource(), BlockPosArgument.getLoadedBlockPos(ctx, "pos")))
+                        )
+                )
+                .then(Commands.literal("farm")
+                        .then(Commands.literal("stop")
+                                .executes(ctx -> stopFarming(ctx.getSource()))
+                        )
+                        .then(Commands.argument("from", BlockPosArgument.blockPos())
+                                .then(Commands.argument("to", BlockPosArgument.blockPos())
+                                        .executes(ctx -> startFarming(ctx.getSource(),
+                                                BlockPosArgument.getLoadedBlockPos(ctx, "from"),
+                                                BlockPosArgument.getLoadedBlockPos(ctx, "to")))
+                                )
+                        )
+                )
+                .then(Commands.literal("fish")
+                        .then(Commands.literal("stop")
+                                .executes(ctx -> stopFishing(ctx.getSource()))
+                        )
+                        .executes(ctx -> startFishing(ctx.getSource()))
+                )
+                .then(Commands.literal("queue")
+                        .then(Commands.literal("list")
+                                .executes(ctx -> listQueue(ctx.getSource()))
+                        )
+                        .then(Commands.literal("clear")
+                                .executes(ctx -> clearQueue(ctx.getSource()))
+                        )
+                        .then(Commands.literal("add")
+                                .then(Commands.argument("command", StringArgumentType.greedyString())
+                                        .executes(ctx -> addToQueue(ctx.getSource(),
+                                                StringArgumentType.getString(ctx, "command")))
+                                )
                         )
                 )
         );
@@ -422,10 +454,10 @@ public class SquireCommand {
         }
         PendingClear pending = pendingClears.remove(player.getUUID());
         if (pending == null) {
-            source.sendFailure(Component.literal("No pending clear to confirm. Use /squire clear <from> <to> or the crest first."));
+            source.sendFailure(Component.literal("No pending clear to confirm. Use /squire clear <from> <to> or the lance first."));
             return 0;
         }
-        SquireCrestItem.clearPositions(player.getUUID());
+        SquireLanceItem.clearPositions(player.getUUID());
         SquireEntity squire = findOwnedSquire(source, player);
         if (squire == null) {
             source.sendFailure(Component.literal("You have no active squire."));
@@ -462,7 +494,7 @@ public class SquireCommand {
         }
 
         boolean hadPending = pendingClears.remove(player.getUUID()) != null;
-        SquireCrestItem.clearPositions(player.getUUID());
+        SquireLanceItem.clearPositions(player.getUUID());
 
         // Also stop active area clear if running
         SquireEntity squire = findOwnedSquire(source, player);
@@ -1020,5 +1052,127 @@ public class SquireCommand {
             level.sendParticles(ParticleTypes.FLAME, x0, y1, z, 1, 0, 0, 0, 0);
             level.sendParticles(ParticleTypes.FLAME, x1, y1, z, 1, 0, 0, 0, 0);
         }
+    }
+
+    // ------------------------------------------------------------------
+    // /squire farm <from> <to>  |  /squire farm stop
+    // ------------------------------------------------------------------
+
+    private static int startFarming(CommandSourceStack source, BlockPos from, BlockPos to) {
+        SquireEntity squire = findPlayerSquire(source);
+        if (squire == null) return 0;
+
+        int area = (Math.abs(from.getX() - to.getX()) + 1) * (Math.abs(from.getZ() - to.getZ()) + 1);
+        int maxArea = SquireConfig.farmMaxArea.get();
+        if (area > maxArea) {
+            source.sendFailure(Component.literal("Farm area too large (" + area + " blocks). Maximum: " + maxArea));
+            return 0;
+        }
+
+        squire.getSquireAI().getFarming().setArea(from, to);
+        squire.getSquireAI().getMachine().forceState(SquireAIState.FARM_SCAN);
+        source.sendSuccess(() -> Component.literal("Squire farming " + area + " blocks."), false);
+        return 1;
+    }
+
+    private static int stopFarming(CommandSourceStack source) {
+        SquireEntity squire = findPlayerSquire(source);
+        if (squire == null) return 0;
+
+        squire.getSquireAI().getFarming().stop();
+        squire.getSquireAI().getMachine().forceState(SquireAIState.IDLE);
+        source.sendSuccess(() -> Component.literal("Squire stopped farming."), false);
+        return 1;
+    }
+
+    // ------------------------------------------------------------------
+    // /squire fish  |  /squire fish stop
+    // ------------------------------------------------------------------
+
+    private static int startFishing(CommandSourceStack source) {
+        SquireEntity squire = findPlayerSquire(source);
+        if (squire == null) return 0;
+
+        boolean started = squire.getSquireAI().getFishing().startFishing();
+        if (!started) {
+            source.sendFailure(Component.literal("No water found nearby."));
+            return 0;
+        }
+
+        squire.getSquireAI().getMachine().forceState(SquireAIState.FISHING_APPROACH);
+        source.sendSuccess(() -> Component.literal("Squire is heading to fish."), false);
+        return 1;
+    }
+
+    private static int stopFishing(CommandSourceStack source) {
+        SquireEntity squire = findPlayerSquire(source);
+        if (squire == null) return 0;
+
+        squire.getSquireAI().getFishing().stop();
+        squire.getSquireAI().getMachine().forceState(SquireAIState.IDLE);
+        source.sendSuccess(() -> Component.literal("Squire stopped fishing."), false);
+        return 1;
+    }
+
+    // ------------------------------------------------------------------
+    // /squire queue add <cmd>  |  /squire queue list  |  /squire queue clear
+    // ------------------------------------------------------------------
+
+    private static int addToQueue(CommandSourceStack source, String command) {
+        SquireEntity squire = findPlayerSquire(source);
+        if (squire == null) return 0;
+
+        boolean added = squire.getTaskQueue().add(command);
+        if (!added) {
+            source.sendFailure(Component.literal("Task queue is full (max "
+                    + SquireConfig.maxQueueLength.get() + ")."));
+            return 0;
+        }
+
+        source.sendSuccess(() -> Component.literal("Queued: " + command
+                + " (" + squire.getTaskQueue().size() + " in queue)"), false);
+        return 1;
+    }
+
+    private static int listQueue(CommandSourceStack source) {
+        SquireEntity squire = findPlayerSquire(source);
+        if (squire == null) return 0;
+
+        var tasks = squire.getTaskQueue().getAll();
+        if (tasks.isEmpty()) {
+            source.sendSuccess(() -> Component.literal("Task queue is empty."), false);
+            return 0;
+        }
+
+        source.sendSuccess(() -> Component.literal("Task queue (" + tasks.size() + "):"), false);
+        for (int i = 0; i < tasks.size(); i++) {
+            final int idx = i + 1;
+            final String cmd = tasks.get(i).commandName();
+            source.sendSuccess(() -> Component.literal("  " + idx + ". " + cmd), false);
+        }
+        return 1;
+    }
+
+    private static int clearQueue(CommandSourceStack source) {
+        SquireEntity squire = findPlayerSquire(source);
+        if (squire == null) return 0;
+
+        int count = squire.getTaskQueue().size();
+        squire.getTaskQueue().clear();
+        source.sendSuccess(() -> Component.literal("Cleared " + count + " tasks from queue."), false);
+        return 1;
+    }
+
+    private static SquireEntity findPlayerSquire(CommandSourceStack source) {
+        if (!(source.getEntity() instanceof ServerPlayer player)) {
+            source.sendFailure(Component.literal("Must be run by a player."));
+            return null;
+        }
+        SquireEntity squire = findOwnedSquire(source, player);
+        if (squire == null) {
+            source.sendFailure(Component.literal("You have no active squire."));
+            return null;
+        }
+        return squire;
     }
 }

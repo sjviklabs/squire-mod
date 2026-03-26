@@ -40,6 +40,15 @@ public enum SquireAIState {
     PATROL_WALK,
     PATROL_WAIT,
 
+    // Farming (Phase 5)
+    FARM_APPROACH,
+    FARM_WORK,
+    FARM_SCAN,
+
+    // Fishing (Phase 5)
+    FISHING_APPROACH,
+    FISHING_IDLE,
+
     // Utility (lowest priority — Phase 2)
     LOOKING_AROUND,
     WANDERING

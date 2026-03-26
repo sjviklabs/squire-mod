@@ -104,6 +104,29 @@ public final class SquireConfig {
     public static final ModConfigSpec.IntValue equipCheckInterval;
     public static final ModConfigSpec.IntValue pathRecalcInterval;
 
+    // --- Halberd sweep ---
+    public static final ModConfigSpec.DoubleValue sweepDamageMultiplier;
+    public static final ModConfigSpec.IntValue sweepCooldownTicks;
+    public static final ModConfigSpec.DoubleValue sweepRange;
+    public static final ModConfigSpec.IntValue sweepMaxTargets;
+
+    // --- Visual progression ---
+    public static final ModConfigSpec.BooleanValue enableVisualProgression;
+
+    // --- Farming ---
+    public static final ModConfigSpec.DoubleValue farmReach;
+    public static final ModConfigSpec.IntValue farmTicksPerBlock;
+    public static final ModConfigSpec.IntValue farmScanInterval;
+    public static final ModConfigSpec.IntValue farmMaxArea;
+
+    // --- Fishing ---
+    public static final ModConfigSpec.DoubleValue waterSearchRange;
+    public static final ModConfigSpec.IntValue fishingCatchInterval;
+    public static final ModConfigSpec.IntValue fishingRodDurabilityPerCatch;
+
+    // --- Task queue ---
+    public static final ModConfigSpec.IntValue maxQueueLength;
+
     static {
         ModConfigSpec.Builder builder = new ModConfigSpec.Builder();
 
@@ -338,6 +361,65 @@ public final class SquireConfig {
         pathRecalcInterval = builder
                 .comment("Ticks between path recalculation during follow.")
                 .defineInRange("pathRecalcInterval", 10, 1, 40);
+        builder.pop();
+
+        // ---- Halberd sweep ----
+        builder.push("halberd");
+        sweepDamageMultiplier = builder
+                .comment("Damage multiplier for halberd sweep AoE (fraction of base damage).")
+                .defineInRange("sweepDamageMultiplier", 0.75, 0.1, 1.5);
+        sweepCooldownTicks = builder
+                .comment("Cooldown ticks between halberd sweeps.")
+                .defineInRange("sweepCooldownTicks", 60, 20, 200);
+        sweepRange = builder
+                .comment("Range in blocks for halberd sweep AoE.")
+                .defineInRange("sweepRange", 2.5, 1.0, 5.0);
+        sweepMaxTargets = builder
+                .comment("Maximum number of targets hit by halberd sweep.")
+                .defineInRange("sweepMaxTargets", 5, 1, 10);
+        builder.pop();
+
+        // ---- Visual progression ----
+        builder.push("visual");
+        enableVisualProgression = builder
+                .comment("Enable tier-based visual armor changes by squire level.")
+                .define("enableVisualProgression", true);
+        builder.pop();
+
+        // ---- Farming ----
+        builder.push("farming");
+        farmReach = builder
+                .comment("Block reach for farming actions.")
+                .defineInRange("farmReach", 3.0, 1.0, 6.0);
+        farmTicksPerBlock = builder
+                .comment("Ticks spent per farming action (till/plant/harvest).")
+                .defineInRange("farmTicksPerBlock", 10, 5, 40);
+        farmScanInterval = builder
+                .comment("Ticks between farm area scans for new tasks.")
+                .defineInRange("farmScanInterval", 40, 10, 200);
+        farmMaxArea = builder
+                .comment("Maximum farm area in blocks (width * length).")
+                .defineInRange("farmMaxArea", 256, 16, 1024);
+        builder.pop();
+
+        // ---- Fishing ----
+        builder.push("fishing");
+        waterSearchRange = builder
+                .comment("Search range in blocks for finding nearby water.")
+                .defineInRange("waterSearchRange", 16.0, 4.0, 32.0);
+        fishingCatchInterval = builder
+                .comment("Ticks between simulated fish catches.")
+                .defineInRange("fishingCatchInterval", 400, 100, 1200);
+        fishingRodDurabilityPerCatch = builder
+                .comment("Durability consumed per catch from fishing rod.")
+                .defineInRange("fishingRodDurabilityPerCatch", 1, 0, 5);
+        builder.pop();
+
+        // ---- Task queue ----
+        builder.push("taskQueue");
+        maxQueueLength = builder
+                .comment("Maximum number of tasks in the command queue.")
+                .defineInRange("maxQueueLength", 10, 1, 50);
         builder.pop();
 
         SPEC = builder.build();
