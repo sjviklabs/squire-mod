@@ -25,10 +25,12 @@ import org.joml.Matrix4f;
  */
 public class SquireRenderer extends HumanoidMobRenderer<SquireEntity, PlayerModel<SquireEntity>> {
 
+    // Use vanilla Steve/Alex skins as default. Custom squire skins kept in assets for
+    // future Visual Progression tiers (squire_t0..t3.png).
     private static final ResourceLocation TEXTURE =
-            ResourceLocation.fromNamespaceAndPath(SquireMod.MODID, "textures/entity/squire.png");
+            ResourceLocation.withDefaultNamespace("textures/entity/player/wide/steve.png");
     private static final ResourceLocation TEXTURE_SLIM =
-            ResourceLocation.fromNamespaceAndPath(SquireMod.MODID, "textures/entity/squire_slim.png");
+            ResourceLocation.withDefaultNamespace("textures/entity/player/slim/alex.png");
 
     private final PlayerModel<SquireEntity> wideModel;
     private final PlayerModel<SquireEntity> slimModel;

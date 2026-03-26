@@ -41,13 +41,15 @@ Before marking any item "done":
   - **Fix to try:** Add `SquireLanceItem` to the melee weapon scan in `switchToMeleeLoadout()` and `runFullEquipCheck()`
   - Also check: periodic `runFullEquipCheck()` (every 60 ticks) may re-equip bow during `COMBAT_APPROACH` window
 
-### 2. Halberd Item [NOT STARTED]
-- **Priority:** High. Rounds out melee arsenal with sweep.
-- **Confidence:** ~50% (needs design decisions on sweep mechanics)
-- **Tasks:**
+### 2. Halberd Item [WIP — DEFERRED]
+- **Priority:** Medium. Rounds out melee arsenal with sweep.
+- **Confidence:** ~30% (needs sweep mechanics design, custom texture, Blockbench model)
+- **Blockers:** No vanilla halberd exists. Needs full custom item, model, texture, and sweep logic.
+- **Tasks (when resumed):**
   - Design: sweep range, damage, cooldown, animation
   - Create `SquireHalberdItem.java`
-  - Create texture (16x16, Grimdark style)  - Create 3D Blockbench model
+  - Create texture (16x16, Grimdark style)
+  - Create 3D Blockbench model
   - Register, recipe, lang string
   - Add sweep logic to `CombatHandler`
   - Test: sweep hits multiple mobs, damage numbers match config
