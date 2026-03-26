@@ -1,0 +1,18 @@
+{
+  "display": {
+    "icon": { "id": "squire:squire_badge" },
+    "title": { "translate": "advancement.squire.root.title" },
+    "description": { "translate": "advancement.squire.root.description" },
+    "background": "minecraft:textures/block/stone_bricks.png",
+    "show_toast": false,
+    "announce_to_chat": false
+  },
+  "criteria": {
+    "has_crest": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [{ "items": "squire:squire_badge" }]
+      }
+    }
+  }
+}

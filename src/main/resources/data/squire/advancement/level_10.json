@@ -1,0 +1,15 @@
+{
+  "display": {
+    "icon": { "id": "minecraft:shield" },
+    "title": { "translate": "advancement.squire.level_10.title" },
+    "description": { "translate": "advancement.squire.level_10.description" },
+    "show_toast": true,
+    "announce_to_chat": true
+  },
+  "parent": "squire:level_5",
+  "criteria": {
+    "reached": {
+      "trigger": "minecraft:impossible"
+    }
+  }
+}

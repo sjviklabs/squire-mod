@@ -1,5 +1,6 @@
 package com.sjviklabs.squire.util;
 
+import com.sjviklabs.squire.compat.ModCompat;
 import com.sjviklabs.squire.entity.SquireEntity;
 import com.sjviklabs.squire.inventory.SquireInventory;
 import net.minecraft.core.Holder;
@@ -77,8 +78,8 @@ public final class SquireEquipmentHelper {
             return;
         }
 
-        // Weapon (sword or axe)
-        if (newItem.getItem() instanceof SwordItem || newItem.getItem() instanceof AxeItem) {
+        // Weapon (sword, axe, or modded melee like FD knives)
+        if (isMeleeWeapon(newItem)) {
             ItemStack currentMainhand = squire.getItemBySlot(EquipmentSlot.MAINHAND);
             if (isBetterWeapon(newItem, currentMainhand)) {
                 swapEquipment(squire, EquipmentSlot.MAINHAND, newItem);
@@ -144,7 +145,7 @@ public final class SquireEquipmentHelper {
                 for (int i = 0; i < inv.getContainerSize(); i++) {
                     ItemStack candidate = inv.getItem(i);
                     if (candidate.isEmpty()) continue;
-                    if (!(candidate.getItem() instanceof SwordItem) && !(candidate.getItem() instanceof AxeItem)) continue;
+                    if (!isMeleeWeapon(candidate)) continue;
                     if (isCursed(candidate)) continue;
                     if (isBetterWeapon(candidate, bestWeapon)) {
                         bestWeapon = candidate;
@@ -275,14 +276,12 @@ public final class SquireEquipmentHelper {
         return false;
     }
 
-    /** Check if squire has any melee weapon (SwordItem or AxeItem) equipped or in inventory. */
+    /** Check if squire has any melee weapon equipped or in inventory. */
     private static boolean hasMeleeWeapon(SquireEntity squire, SquireInventory inv) {
-        ItemStack mainhand = squire.getItemBySlot(EquipmentSlot.MAINHAND);
-        if (mainhand.getItem() instanceof SwordItem || mainhand.getItem() instanceof AxeItem) return true;
+        if (isMeleeWeapon(squire.getItemBySlot(EquipmentSlot.MAINHAND))) return true;
 
         for (int i = 0; i < inv.getContainerSize(); i++) {
-            ItemStack stack = inv.getItem(i);
-            if (stack.getItem() instanceof SwordItem || stack.getItem() instanceof AxeItem) return true;
+            if (isMeleeWeapon(inv.getItem(i))) return true;
         }
         return false;
     }
@@ -372,7 +371,7 @@ public final class SquireEquipmentHelper {
         for (int i = 0; i < inv.getContainerSize(); i++) {
             ItemStack candidate = inv.getItem(i);
             if (candidate.isEmpty()) continue;
-            if (!(candidate.getItem() instanceof SwordItem) && !(candidate.getItem() instanceof AxeItem)) continue;
+            if (!isMeleeWeapon(candidate)) continue;
             if (isCursed(candidate)) continue;
             if (isBetterWeapon(candidate, bestWeapon)) {
                 bestWeapon = candidate;
@@ -466,6 +465,17 @@ public final class SquireEquipmentHelper {
             return candidateIsSword && !currentIsSword;
         }
         return false;
+    }
+
+    /**
+     * @return true if the item is a melee weapon (SwordItem, AxeItem, or Farmer's Delight knife)
+     */
+    public static boolean isMeleeWeapon(ItemStack stack) {
+        if (stack.isEmpty()) return false;
+        Item item = stack.getItem();
+        if (item instanceof SwordItem || item instanceof AxeItem) return true;
+        // Farmer's Delight knives have attack damage but don't extend SwordItem
+        return ModCompat.isFDKnife(stack);
     }
 
     /**

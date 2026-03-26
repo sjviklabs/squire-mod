@@ -1,0 +1,15 @@
+{
+  "display": {
+    "icon": { "id": "minecraft:golden_apple" },
+    "title": { "translate": "advancement.squire.level_20.title" },
+    "description": { "translate": "advancement.squire.level_20.description" },
+    "show_toast": true,
+    "announce_to_chat": true
+  },
+  "parent": "squire:level_10",
+  "criteria": {
+    "reached": {
+      "trigger": "minecraft:impossible"
+    }
+  }
+}

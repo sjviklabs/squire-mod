@@ -3,6 +3,7 @@ package com.sjviklabs.squire.ai.handler;
 import com.sjviklabs.squire.config.SquireConfig;
 import com.sjviklabs.squire.entity.SquireEntity;
 import com.sjviklabs.squire.util.SquireAbilities;
+import com.sjviklabs.squire.util.SquireAdvancements;
 import net.minecraft.core.Holder;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
@@ -45,6 +46,10 @@ public class ProgressionHandler {
     /** Add XP from a kill. */
     public void addKillXP() {
         addXP(SquireConfig.xpPerKill.get());
+        // Grant first kill advancement to owner
+        if (squire.getOwner() instanceof net.minecraft.server.level.ServerPlayer owner) {
+            SquireAdvancements.grantFirstKill(owner);
+        }
     }
 
     /** Add XP from mining a block. */
@@ -78,6 +83,11 @@ public class ProgressionHandler {
         squire.setSquireLevel(currentLevel);
         // Heal to new max on level up
         squire.setHealth(squire.getMaxHealth());
+
+        // Grant level milestone advancements to owner
+        if (squire.getOwner() instanceof net.minecraft.server.level.ServerPlayer owner) {
+            SquireAdvancements.grantLevel(owner, currentLevel);
+        }
 
         // Chat line
         if (squire.getSquireAI() != null) {

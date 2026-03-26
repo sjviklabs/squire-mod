@@ -1,0 +1,15 @@
+{
+  "display": {
+    "icon": { "id": "minecraft:iron_sword" },
+    "title": { "translate": "advancement.squire.first_blood.title" },
+    "description": { "translate": "advancement.squire.first_blood.description" },
+    "show_toast": true,
+    "announce_to_chat": true
+  },
+  "parent": "squire:summon_squire",
+  "criteria": {
+    "first_kill": {
+      "trigger": "minecraft:impossible"
+    }
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "display": {
+    "icon": { "id": "squire:squire_badge" },
+    "title": { "translate": "advancement.squire.summon.title" },
+    "description": { "translate": "advancement.squire.summon.description" },
+    "show_toast": true,
+    "announce_to_chat": true
+  },
+  "parent": "squire:root",
+  "criteria": {
+    "summoned": {
+      "trigger": "minecraft:impossible"
+    }
+  }
+}

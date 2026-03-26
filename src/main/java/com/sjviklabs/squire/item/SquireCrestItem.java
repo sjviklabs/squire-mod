@@ -2,6 +2,7 @@ package com.sjviklabs.squire.item;
 
 import com.sjviklabs.squire.command.SquireCommand;
 import com.sjviklabs.squire.config.SquireConfig;
+import com.sjviklabs.squire.util.SquireAdvancements;
 import com.sjviklabs.squire.entity.SquireEntity;
 import com.sjviklabs.squire.init.ModEntities;
 import net.minecraft.core.BlockPos;
@@ -101,6 +102,10 @@ public class SquireCrestItem extends Item {
         level.playSound(null, pos, SoundEvents.PLAYER_LEVELUP, SoundSource.PLAYERS, 0.5F, 1.2F);
 
         context.getItemInHand().shrink(1);
+
+        // Grant advancement
+        SquireAdvancements.grantSummon(serverPlayer);
+
         return InteractionResult.CONSUME;
     }
     @Override
