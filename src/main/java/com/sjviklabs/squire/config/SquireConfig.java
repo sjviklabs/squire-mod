@@ -92,6 +92,10 @@ public final class SquireConfig {
     public static final ModConfigSpec.IntValue rangedCooldownTicks;
     public static final ModConfigSpec.DoubleValue rangedInaccuracy;
 
+    // --- MineColonies integration ---
+    public static final ModConfigSpec.BooleanValue minecoloniesIntegration;
+    public static final ModConfigSpec.DoubleValue minecoloniesRaidAggroMultiplier;
+
     // --- Auto-crafting ---
     public static final ModConfigSpec.BooleanValue autoCraftEnabled;
 
@@ -304,6 +308,16 @@ public final class SquireConfig {
         patrolMaxRouteLength = builder
                 .comment("Maximum number of signposts in a patrol route.")
                 .defineInRange("maxRouteLength", 20, 2, 50);
+        builder.pop();
+
+        // ---- MineColonies integration ----
+        builder.push("minecolonies");
+        minecoloniesIntegration = builder
+                .comment("When true and MineColonies is installed, enables raid defense, warehouse access, and colonist protection.")
+                .define("enabled", true);
+        minecoloniesRaidAggroMultiplier = builder
+                .comment("Aggro range multiplier during active MineColonies raids. 2.0 = double normal range.")
+                .defineInRange("raidAggroMultiplier", 2.0, 1.0, 5.0);
         builder.pop();
 
         // ---- Auto-crafting ----

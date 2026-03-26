@@ -1,14 +1,19 @@
 package com.sjviklabs.squire.ai.handler;
 
 import com.sjviklabs.squire.ai.statemachine.SquireAIState;
+import com.sjviklabs.squire.compat.MineColoniesCompat;
 import com.sjviklabs.squire.config.SquireConfig;
 import com.sjviklabs.squire.entity.SquireEntity;
 import com.sjviklabs.squire.inventory.SquireInventory;
 import com.sjviklabs.squire.util.SquireAbilities;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.BaseContainerBlockEntity;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.neoforged.neoforge.capabilities.Capabilities;
+import net.neoforged.neoforge.items.IItemHandler;
 
 import javax.annotation.Nullable;
 
@@ -73,15 +78,32 @@ public class ChestHandler {
         if (targetChest == null) return SquireAIState.IDLE;
 
         var blockEntity = s.level().getBlockEntity(targetChest);
-        if (!(blockEntity instanceof BaseContainerBlockEntity container)) {
+        if (blockEntity == null) {
             clearTarget();
             return SquireAIState.IDLE;
         }
 
-        if (action == ChestAction.STORE) {
-            depositItems(s, container);
+        // Try standard container first, then fall back to IItemHandler capability.
+        // This lets us interact with MineColonies warehouses and modded storage blocks.
+        if (blockEntity instanceof BaseContainerBlockEntity container) {
+            if (action == ChestAction.STORE) {
+                depositItems(s, container);
+            } else {
+                withdrawItems(s, container);
+            }
         } else {
-            withdrawItems(s, container);
+            IItemHandler handler = s.level().getCapability(
+                    Capabilities.ItemHandler.BLOCK, targetChest, null);
+            if (handler != null) {
+                if (action == ChestAction.STORE) {
+                    depositItemsHandler(s, handler);
+                } else {
+                    withdrawItemsHandler(s, handler);
+                }
+            } else {
+                clearTarget();
+                return SquireAIState.IDLE;
+            }
         }
 
         // Chest close sound
@@ -89,8 +111,10 @@ public class ChestHandler {
 
         var log = s.getActivityLog();
         if (log != null) {
+            String blockName = MineColoniesCompat.isWarehouse(s.level(), targetChest)
+                    ? "warehouse" : "chest";
             log.log("CHEST", (action == ChestAction.STORE ? "Deposited" : "Fetched")
-                    + " items at " + targetChest.toShortString());
+                    + " items at " + blockName + " " + targetChest.toShortString());
         }
 
         clearTarget();
@@ -160,6 +184,48 @@ public class ChestHandler {
         }
     }
 
+    // ------------------------------------------------------------------
+    // IItemHandler-based transfer (for modded storage: warehouses, etc.)
+    // ------------------------------------------------------------------
+
+    private void depositItemsHandler(SquireEntity s, IItemHandler handler) {
+        SquireInventory inv = s.getSquireInventory();
+        for (int i = 6; i < inv.getContainerSize(); i++) {
+            ItemStack stack = inv.getItem(i);
+            if (stack.isEmpty()) continue;
+
+            ItemStack toInsert = stack.copy();
+            for (int j = 0; j < handler.getSlots(); j++) {
+                toInsert = handler.insertItem(j, toInsert, false);
+                if (toInsert.isEmpty()) break;
+            }
+            inv.setItem(i, toInsert);
+        }
+    }
+
+    private void withdrawItemsHandler(SquireEntity s, IItemHandler handler) {
+        SquireInventory inv = s.getSquireInventory();
+        for (int j = 0; j < handler.getSlots(); j++) {
+            ItemStack containerStack = handler.getStackInSlot(j);
+            if (containerStack.isEmpty()) continue;
+
+            if (fetchFilter != null) {
+                String itemId = containerStack.getItem().toString().toLowerCase();
+                if (!itemId.contains(fetchFilter.toLowerCase())) continue;
+            }
+
+            ItemStack extracted = handler.extractItem(j, containerStack.getCount(), false);
+            if (extracted.isEmpty()) continue;
+
+            ItemStack remainder = inv.addItem(extracted);
+            if (!remainder.isEmpty()) {
+                // Put back what didn't fit
+                handler.insertItem(j, remainder, false);
+                break; // Inventory full
+            }
+        }
+    }
+
     @Nullable
     private BlockPos findNearestChest() {
         int range = SquireConfig.chestSearchRange.get().intValue();
@@ -170,7 +236,16 @@ public class ChestHandler {
         for (BlockPos pos : BlockPos.betweenClosed(
                 center.offset(-range, -range, -range),
                 center.offset(range, range, range))) {
-            if (squire.level().getBlockEntity(pos) instanceof BaseContainerBlockEntity) {
+            BlockEntity be = squire.level().getBlockEntity(pos);
+            if (be == null) continue;
+
+            // Standard containers (chests, barrels, etc.)
+            boolean isContainer = be instanceof BaseContainerBlockEntity;
+            // MineColonies warehouses and other modded storage via IItemHandler
+            boolean isModdedStorage = !isContainer
+                    && squire.level().getCapability(Capabilities.ItemHandler.BLOCK, pos, null) != null;
+
+            if (isContainer || isModdedStorage) {
                 double dist = pos.distSqr(center);
                 if (dist < closestDist) {
                     closestDist = dist;

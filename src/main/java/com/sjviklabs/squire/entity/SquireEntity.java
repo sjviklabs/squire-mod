@@ -4,6 +4,7 @@ import com.sjviklabs.squire.ai.SquireActivityLog;
 import com.sjviklabs.squire.ai.handler.ProgressionHandler;
 import com.sjviklabs.squire.ai.statemachine.SquireAI;
 import com.sjviklabs.squire.ai.statemachine.SquireAIState;
+import com.sjviklabs.squire.compat.MineColoniesCompat;
 import com.sjviklabs.squire.config.SquireConfig;
 import com.sjviklabs.squire.init.ModItems;
 import com.sjviklabs.squire.util.SquireAbilities;
@@ -196,9 +197,13 @@ public class SquireEntity extends TamableAnimal implements RangedAttackMob {
         this.targetSelector.addGoal(2, new OwnerHurtTargetGoal(this));
         this.targetSelector.addGoal(3, new HurtByTargetGoal(this));
         // Proactive aggro — engage any mob implementing Enemy (Monster, Slime, MagmaCube,
-        // Phantom, Ghast, Shulker, etc.) without waiting to be hit first
+        // Phantom, Ghast, Shulker, etc.) without waiting to be hit first.
+        // MineColonies compat: also excludes colonists from targeting, includes raiders.
         this.targetSelector.addGoal(4, new NearestAttackableTargetGoal<>(this, Mob.class, 10, true, false,
-                (entity) -> entity instanceof Enemy));
+                (entity) -> {
+                    if (MineColoniesCompat.isFriendly(entity)) return false;
+                    return entity instanceof Enemy || MineColoniesCompat.isRaider(entity);
+                }));
 
         // All behavior goals (sit, combat, eat, follow, pickup, look) are now
         // handled by SquireAI's tick-rate state machine. See aiStep().
@@ -535,6 +540,27 @@ public class SquireEntity extends TamableAnimal implements RangedAttackMob {
                     && this.getHealth() < this.getMaxHealth()
                     && com.sjviklabs.squire.item.SquireArmorItem.isFullSquireArmor(this)) {
                 this.addEffect(new MobEffectInstance(MobEffects.REGENERATION, 100, 0, false, false));
+            }
+
+            // MineColonies raid defense: boost follow range during active raids
+            // so squire detects raiders from further away. Check every 2 seconds.
+            if (this.tickCount % 40 == 0 && MineColoniesCompat.isActive()) {
+                double raidRange = MineColoniesCompat.getRaidAggroRange(this);
+                double currentFollow = this.getAttributeValue(Attributes.FOLLOW_RANGE);
+                double baseFollow = 32.0; // matches createAttributes()
+                if (raidRange > SquireConfig.aggroRange.get() && currentFollow <= baseFollow) {
+                    // Raid active — temporarily boost follow range
+                    this.getAttribute(Attributes.FOLLOW_RANGE).setBaseValue(raidRange + 16.0);
+                    if (this.activityLog != null) {
+                        this.activityLog.log("RAID", "Colony raid detected! Boosting aggro range.");
+                    }
+                } else if (raidRange <= SquireConfig.aggroRange.get() && currentFollow > baseFollow) {
+                    // Raid over — restore normal range
+                    this.getAttribute(Attributes.FOLLOW_RANGE).setBaseValue(baseFollow);
+                    if (this.activityLog != null) {
+                        this.activityLog.log("RAID", "Raid over. Returning to normal patrol.");
+                    }
+                }
             }
 
             // Passive item pickup: absorb items within reach without changing AI state.
