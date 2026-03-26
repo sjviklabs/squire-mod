@@ -3,7 +3,6 @@ package com.sjviklabs.squire.ai.handler;
 import com.sjviklabs.squire.ai.statemachine.SquireAIState;
 import com.sjviklabs.squire.config.SquireConfig;
 import com.sjviklabs.squire.entity.SquireEntity;
-import com.sjviklabs.squire.item.SquireLanceItem;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.LivingEntity;
@@ -254,9 +253,6 @@ public class MountHandler {
     }
 
     private double getMountedReach(SquireEntity s, LivingEntity target) {
-        if (s.getMainHandItem().getItem() instanceof SquireLanceItem) {
-            return 6.0;
-        }
         return 2.5;
     }
 }

@@ -1,7 +1,6 @@
 package com.sjviklabs.squire.item;
 
 import com.sjviklabs.squire.SquireMod;
-import com.sjviklabs.squire.init.ModItems;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.chat.Component;
@@ -13,21 +12,18 @@ import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 
 /**
- * Game bus events for the Squire's Lance.
+ * Game bus events for the Squire's Crest.
  * Handles left-click block (pos2 selection) and logout cleanup.
  */
 @EventBusSubscriber(modid = SquireMod.MODID)
-public class SquireLanceEvents {
+public class SquireCrestEvents {
 
     @SubscribeEvent
     public static void onLeftClickBlock(PlayerInteractEvent.LeftClickBlock event) {
-        if (!(event.getEntity().getMainHandItem().getItem() instanceof SquireLanceItem)) return;
-
-        // Only intercept for area selection when sneaking — normal left-click = melee attack
+        if (!(event.getEntity().getMainHandItem().getItem() instanceof SquireCrestItem)) return;
         if (!event.getEntity().isShiftKeyDown()) return;
 
         if (!(event.getEntity() instanceof ServerPlayer player)) {
-            // Client side: cancel to prevent break animation during area select
             event.setCanceled(true);
             return;
         }
@@ -35,7 +31,7 @@ public class SquireLanceEvents {
         event.setCanceled(true);
 
         BlockPos pos = event.getPos();
-        SquireLanceItem.setPos2(player.getUUID(), pos);
+        SquireCrestItem.setPos2(player.getUUID(), pos);
 
         player.displayClientMessage(
                 Component.literal("Pos2 set: (" + pos.getX() + ", " + pos.getY() + ", " + pos.getZ() + ")"), true);
@@ -49,6 +45,6 @@ public class SquireLanceEvents {
 
     @SubscribeEvent
     public static void onPlayerLogout(PlayerEvent.PlayerLoggedOutEvent event) {
-        SquireLanceItem.clearPositions(event.getEntity().getUUID());
+        SquireCrestItem.clearPositions(event.getEntity().getUUID());
     }
 }

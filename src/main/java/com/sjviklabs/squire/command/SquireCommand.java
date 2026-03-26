@@ -12,7 +12,7 @@ import com.sjviklabs.squire.config.SquireConfig;
 import com.sjviklabs.squire.entity.SquireEntity;
 import com.sjviklabs.squire.init.ModBlocks;
 import com.sjviklabs.squire.init.ModEntities;
-import com.sjviklabs.squire.item.SquireLanceItem;
+import com.sjviklabs.squire.item.SquireCrestItem;
 import com.sjviklabs.squire.util.SquireAbilities;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -422,10 +422,10 @@ public class SquireCommand {
         }
         PendingClear pending = pendingClears.remove(player.getUUID());
         if (pending == null) {
-            source.sendFailure(Component.literal("No pending clear to confirm. Use /squire clear <from> <to> or the lance first."));
+            source.sendFailure(Component.literal("No pending clear to confirm. Use /squire clear <from> <to> or the crest first."));
             return 0;
         }
-        SquireLanceItem.clearPositions(player.getUUID());
+        SquireCrestItem.clearPositions(player.getUUID());
         SquireEntity squire = findOwnedSquire(source, player);
         if (squire == null) {
             source.sendFailure(Component.literal("You have no active squire."));
@@ -462,7 +462,7 @@ public class SquireCommand {
         }
 
         boolean hadPending = pendingClears.remove(player.getUUID()) != null;
-        SquireLanceItem.clearPositions(player.getUUID());
+        SquireCrestItem.clearPositions(player.getUUID());
 
         // Also stop active area clear if running
         SquireEntity squire = findOwnedSquire(source, player);

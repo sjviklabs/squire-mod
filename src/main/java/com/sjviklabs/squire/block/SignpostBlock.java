@@ -77,10 +77,10 @@ public class SignpostBlock extends HorizontalDirectionalBlock implements EntityB
                 return InteractionResult.CONSUME;
             }
 
-            // Right-click with lance: link signposts
+            // Right-click with crest: link signposts
             ItemStack mainHand = player.getMainHandItem();
-            if (mainHand.is(ModItems.SQUIRE_LANCE.get())) {
-                return handleLanceLink(player, pos, signpost);
+            if (mainHand.is(ModItems.SQUIRE_CREST.get())) {
+                return handleCrestLink(player, pos, signpost);
             }
 
             // Plain right-click: show info
@@ -95,10 +95,10 @@ public class SignpostBlock extends HorizontalDirectionalBlock implements EntityB
     }
 
     /**
-     * Lance-based linking: click first signpost, then click second signpost to link them.
+     * Crest-based linking: click first signpost, then click second signpost to link them.
      * First signpost's "next" is set to the second signpost's position.
      */
-    private InteractionResult handleLanceLink(Player player, BlockPos pos, SignpostBlockEntity signpost) {
+    private InteractionResult handleCrestLink(Player player, BlockPos pos, SignpostBlockEntity signpost) {
         UUID playerId = player.getUUID();
         BlockPos pending = PENDING_LINKS.get(playerId);
 
@@ -106,7 +106,7 @@ public class SignpostBlock extends HorizontalDirectionalBlock implements EntityB
             // First click (or clicked same post again) — mark as pending
             PENDING_LINKS.put(playerId, pos);
             player.sendSystemMessage(Component.literal(
-                    "Signpost selected at " + pos.toShortString() + ". Right-click another signpost with lance to link."));
+                    "Signpost selected at " + pos.toShortString() + ". Right-click another signpost with crest to link."));
             return InteractionResult.CONSUME;
         }
 
