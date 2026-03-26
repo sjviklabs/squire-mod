@@ -470,11 +470,15 @@ public class SquireEntity extends TamableAnimal implements RangedAttackMob {
             return;
         }
         if (this.isInWater() && this.isEffectiveAi()) {
-            this.moveRelative(0.12F, travelVector);
+            this.moveRelative(0.14F, travelVector); // Faster than default 0.02
             this.move(net.minecraft.world.entity.MoverType.SELF, this.getDeltaMovement());
-            this.setDeltaMovement(this.getDeltaMovement().scale(0.72D));
+            this.setDeltaMovement(this.getDeltaMovement().scale(0.78D)); // Less drag
             if (this.horizontalCollision && this.onClimbable()) {
                 this.setDeltaMovement(this.getDeltaMovement().x, 0.3D, this.getDeltaMovement().z);
+            }
+            // Swim upward if submerged — stay at surface
+            if (this.isUnderWater()) {
+                this.setDeltaMovement(this.getDeltaMovement().add(0, 0.04, 0));
             }
         } else {
             super.travel(travelVector);
@@ -487,6 +491,13 @@ public class SquireEntity extends TamableAnimal implements RangedAttackMob {
     // ================================================================
 
     private int equipCheckTimer = 0;
+
+    // ---- Safety rails: stuck detection ----
+    private double lastSafeX, lastSafeY, lastSafeZ;
+    private int stuckTicks = 0;
+    private static final int STUCK_CHECK_INTERVAL = 100; // 5 seconds
+    private static final int STUCK_JUMP_THRESHOLD = 200; // 10 seconds
+    private static final int STUCK_TELEPORT_THRESHOLD = 400; // 20 seconds
 
     @Override
     public void aiStep() {
@@ -541,6 +552,9 @@ public class SquireEntity extends TamableAnimal implements RangedAttackMob {
                     && com.sjviklabs.squire.item.SquireArmorItem.isFullSquireArmor(this)) {
                 this.addEffect(new MobEffectInstance(MobEffects.REGENERATION, 100, 0, false, false));
             }
+
+            // ---- Safety rails ----
+            tickSafetyRails();
 
             // MineColonies raid defense: boost follow range during active raids
             // so squire detects raiders from further away. Check every 2 seconds.
@@ -625,6 +639,193 @@ public class SquireEntity extends TamableAnimal implements RangedAttackMob {
                         + "x " + original.getHoverName().getString());
             }
         }
+    }
+
+    // ================================================================
+    // Safety rails — stuck detection, drowning, fall, combat retreat
+    // ================================================================
+
+    private void tickSafetyRails() {
+        tickStuckDetection();
+        tickDrowningProtection();
+        tickFallProtection();
+        tickCombatRetreat();
+    }
+
+    /**
+     * Track squire position. If it hasn't moved significantly while the navigation
+     * system thinks it should be pathing, escalate: try jumping, then emergency teleport.
+     */
+    private void tickStuckDetection() {
+        if (this.isOrderedToSit() || this.isPassenger()) {
+            stuckTicks = 0;
+            return;
+        }
+
+        if (this.tickCount % STUCK_CHECK_INTERVAL == 0) {
+            double dx = this.getX() - lastSafeX;
+            double dy = this.getY() - lastSafeY;
+            double dz = this.getZ() - lastSafeZ;
+            double movedSq = dx * dx + dy * dy + dz * dz;
+
+            boolean isPathing = this.getNavigation().isInProgress();
+
+            if (movedSq < 1.0 && isPathing) {
+                // Squire is trying to move but stuck
+                stuckTicks += STUCK_CHECK_INTERVAL;
+
+                if (stuckTicks >= STUCK_TELEPORT_THRESHOLD) {
+                    // Emergency teleport to owner
+                    Player owner = this.getOwner() instanceof Player p ? p : null;
+                    if (owner != null) {
+                        teleportToSafeSpot(owner);
+                        stuckTicks = 0;
+                        if (this.activityLog != null) {
+                            this.activityLog.log("SAFETY", "Emergency teleport — stuck for "
+                                    + (STUCK_TELEPORT_THRESHOLD / 20) + " seconds");
+                        }
+                    }
+                } else if (stuckTicks >= STUCK_JUMP_THRESHOLD) {
+                    // Try jumping to unstick
+                    if (this.onGround()) {
+                        this.jumpFromGround();
+                    }
+                }
+            } else {
+                stuckTicks = 0;
+            }
+
+            lastSafeX = this.getX();
+            lastSafeY = this.getY();
+            lastSafeZ = this.getZ();
+        }
+    }
+
+    /**
+     * Prevent drowning: apply Water Breathing when submerged. Actively swim upward
+     * when underwater and not sitting. Boost swim speed to keep up with owner.
+     */
+    private void tickDrowningProtection() {
+        if (this.isUnderWater()) {
+            // Water breathing — prevents drowning damage
+            if (!this.hasEffect(MobEffects.WATER_BREATHING)) {
+                this.addEffect(new MobEffectInstance(
+                        MobEffects.WATER_BREATHING, 600, 0, false, false));
+            }
+
+            // Actively swim upward if submerged and not sitting
+            if (!this.isOrderedToSit()) {
+                // Swim toward surface
+                net.minecraft.world.phys.Vec3 motion = this.getDeltaMovement();
+                this.setDeltaMovement(motion.x, Math.max(motion.y, 0.04), motion.z);
+            }
+        }
+
+        // Boost swim speed when in water (not just submerged)
+        if (this.isInWater() && !this.isOrderedToSit()) {
+            if (!this.hasEffect(MobEffects.DOLPHINS_GRACE)) {
+                // Light dolphin's grace effect for swim speed
+                this.addEffect(new MobEffectInstance(
+                        MobEffects.DOLPHINS_GRACE, 100, 0, false, false));
+            }
+        }
+    }
+
+    /**
+     * Prevent lethal falls: apply Slow Falling when falling fast or near void.
+     * Kill the squire cleanly (with drops) before reaching void death zone.
+     */
+    private void tickFallProtection() {
+        // Void protection: if below Y=-50, emergency teleport to owner
+        if (this.getY() < -50.0) {
+            Player owner = this.getOwner() instanceof Player p ? p : null;
+            if (owner != null && owner.getY() > -50.0) {
+                teleportToSafeSpot(owner);
+                if (this.activityLog != null) {
+                    this.activityLog.log("SAFETY", "Rescued from void");
+                }
+            }
+            return;
+        }
+
+        // Slow falling when dropping fast (fall speed > 0.5 blocks/tick)
+        if (!this.onGround() && this.getDeltaMovement().y < -0.5 && !this.isInWater()) {
+            if (!this.hasEffect(MobEffects.SLOW_FALLING)) {
+                this.addEffect(new MobEffectInstance(
+                        MobEffects.SLOW_FALLING, 200, 0, false, false));
+            }
+        }
+    }
+
+    /**
+     * Combat retreat: if health is below 20% and no food in inventory, flee toward owner.
+     * The FLEEING state already exists in the enum — this activates it.
+     */
+    private void tickCombatRetreat() {
+        if (this.squireAI == null) return;
+        SquireAIState state = this.squireAI.getMachine().getCurrentState();
+
+        // Only retreat from active combat states
+        boolean inCombat = state == SquireAIState.COMBAT_APPROACH
+                || state == SquireAIState.COMBAT_ATTACK
+                || state == SquireAIState.COMBAT_RANGED;
+        if (!inCombat) return;
+
+        float hpRatio = this.getHealth() / this.getMaxHealth();
+        if (hpRatio > 0.2F) return; // Above 20%, keep fighting
+
+        // Check if squire has food to heal
+        boolean hasFood = false;
+        for (int i = 0; i < this.inventory.getContainerSize(); i++) {
+            ItemStack stack = this.inventory.getItem(i);
+            if (!stack.isEmpty() && stack.has(net.minecraft.core.component.DataComponents.FOOD)) {
+                hasFood = true;
+                break;
+            }
+        }
+
+        if (!hasFood) {
+            // No food, critically low — flee toward owner
+            Player owner = this.getOwner() instanceof Player p ? p : null;
+            if (owner != null) {
+                this.setTarget(null); // Drop combat target
+                this.getNavigation().moveTo(owner, 1.4); // Sprint away
+                this.setSquireSprinting(true);
+                if (this.activityLog != null && this.tickCount % 60 == 0) {
+                    this.activityLog.log("SAFETY", "Retreating — critically low HP, no food!");
+                }
+            }
+        }
+    }
+
+    /**
+     * Emergency teleport to a safe spot near a target entity.
+     * Tries random offsets, finds solid ground. Used by stuck detection and void rescue.
+     */
+    private void teleportToSafeSpot(Player target) {
+        net.minecraft.core.BlockPos targetPos = target.blockPosition();
+        for (int attempt = 0; attempt < 10; attempt++) {
+            int dx = net.minecraft.util.Mth.randomBetweenInclusive(this.getRandom(), -3, 3);
+            int dz = net.minecraft.util.Mth.randomBetweenInclusive(this.getRandom(), -3, 3);
+            if (Math.abs(dx) <= 1 && Math.abs(dz) <= 1) continue;
+
+            net.minecraft.core.BlockPos check = targetPos.offset(dx, 0, dz);
+            for (int dy = -2; dy <= 2; dy++) {
+                net.minecraft.core.BlockPos pos = check.offset(0, dy, 0);
+                if (this.level().getBlockState(pos.below()).isSolid()
+                        && this.level().getBlockState(pos).isAir()
+                        && this.level().getBlockState(pos.above()).isAir()) {
+                    this.moveTo(pos.getX() + 0.5, pos.getY(), pos.getZ() + 0.5,
+                            this.getYRot(), this.getXRot());
+                    this.getNavigation().stop();
+                    return;
+                }
+            }
+        }
+        // Fallback: teleport directly to target
+        this.moveTo(target.getX(), target.getY(), target.getZ(),
+                this.getYRot(), this.getXRot());
+        this.getNavigation().stop();
     }
 
     /** Accessor for debug/admin commands. Null before first server-side aiStep(). */
