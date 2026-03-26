@@ -5,6 +5,7 @@ import com.sjviklabs.squire.ai.handler.ProgressionHandler;
 import com.sjviklabs.squire.ai.statemachine.SquireAI;
 import com.sjviklabs.squire.ai.statemachine.SquireAIState;
 import com.sjviklabs.squire.compat.MineColoniesCompat;
+import com.sjviklabs.squire.compat.ModCompat;
 import com.sjviklabs.squire.config.SquireConfig;
 import com.sjviklabs.squire.init.ModItems;
 import com.sjviklabs.squire.util.SquireAbilities;
@@ -495,6 +496,10 @@ public class SquireEntity extends TamableAnimal implements RangedAttackMob {
     // ---- Safety rails: stuck detection ----
     private double lastSafeX, lastSafeY, lastSafeZ;
     private int stuckTicks = 0;
+
+    // ---- Safety rails: owner teleport detection (Waystones, /tp, etc.) ----
+    private double lastOwnerX, lastOwnerZ;
+    private boolean ownerPosInitialized = false;
     private static final int STUCK_CHECK_INTERVAL = 100; // 5 seconds
     private static final int STUCK_JUMP_THRESHOLD = 200; // 10 seconds
     private static final int STUCK_TELEPORT_THRESHOLD = 400; // 20 seconds
@@ -646,10 +651,40 @@ public class SquireEntity extends TamableAnimal implements RangedAttackMob {
     // ================================================================
 
     private void tickSafetyRails() {
+        tickOwnerTeleportCatchUp();
         tickStuckDetection();
         tickDrowningProtection();
         tickFallProtection();
         tickCombatRetreat();
+    }
+
+    /**
+     * Detect when the owner teleports (Waystones, /tp, etc.) and emergency-teleport
+     * the squire to follow. Triggers on 100+ block movement in a single tick.
+     */
+    private void tickOwnerTeleportCatchUp() {
+        Player owner = this.getOwner() instanceof Player p ? p : null;
+        if (owner == null) return;
+
+        if (!ownerPosInitialized) {
+            lastOwnerX = owner.getX();
+            lastOwnerZ = owner.getZ();
+            ownerPosInitialized = true;
+            return;
+        }
+
+        if (ModCompat.checkOwnerTeleport(this, owner, lastOwnerX, lastOwnerZ)) {
+            teleportToSafeSpot(owner);
+            if (this.activityLog != null) {
+                this.activityLog.log("SAFETY", "Owner teleported — following to new location");
+            }
+            if (owner instanceof ServerPlayer sp) {
+                sp.sendSystemMessage(Component.literal("Your squire followed you through the teleport!"));
+            }
+        }
+
+        lastOwnerX = owner.getX();
+        lastOwnerZ = owner.getZ();
     }
 
     /**

@@ -1,5 +1,6 @@
 package com.sjviklabs.squire;
 
+import com.sjviklabs.squire.compat.ModCompat;
 import com.sjviklabs.squire.config.SquireConfig;
 import com.sjviklabs.squire.init.ModBlockEntities;
 import com.sjviklabs.squire.init.ModBlocks;
@@ -16,6 +17,7 @@ import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.config.ModConfig;
+import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
 
 @Mod(SquireMod.MODID)
 public class SquireMod {
@@ -39,5 +41,10 @@ public class SquireMod {
         // Register network payloads
         modEventBus.addListener(SquireModePayload::register);
         modEventBus.addListener(SquireCommandPayload::register);
+
+        // Mod compatibility scan at startup
+        modEventBus.addListener((FMLCommonSetupEvent event) -> {
+            event.enqueueWork(ModCompat::logDetectedMods);
+        });
     }
 }

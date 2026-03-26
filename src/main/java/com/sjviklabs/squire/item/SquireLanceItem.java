@@ -19,9 +19,12 @@ import net.minecraft.world.entity.animal.horse.AbstractHorse;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.item.component.ItemAttributeModifiers;
 import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.Level;
+
+import java.util.List;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -63,6 +66,13 @@ public class SquireLanceItem extends Item {
 
     public SquireLanceItem(Properties properties) {
         super(properties);
+    }
+
+    @Override
+    public void appendHoverText(ItemStack stack, TooltipContext context, List<Component> tooltipComponents, TooltipFlag tooltipFlag) {
+        tooltipComponents.add(Component.translatable("item.squire.squire_lance.tooltip1").withStyle(net.minecraft.ChatFormatting.GRAY));
+        tooltipComponents.add(Component.translatable("item.squire.squire_lance.tooltip2").withStyle(net.minecraft.ChatFormatting.DARK_GRAY));
+        tooltipComponents.add(Component.translatable("item.squire.squire_lance.tooltip3").withStyle(net.minecraft.ChatFormatting.DARK_GRAY));
     }
 
     @Override

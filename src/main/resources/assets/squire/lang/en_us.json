@@ -21,6 +21,15 @@
   "key.categories.squire": "Squire",
   "key.squire.radial_menu": "Radial Command Menu",
 
+  "item.squire.squire_badge.tooltip1": "Right-click ground to summon a squire",
+  "item.squire.squire_badge.tooltip2": "Right-click air to recall your squire",
+  "item.squire.squire_lance.tooltip1": "Extended reach weapon with charge bonus",
+  "item.squire.squire_lance.tooltip2": "Sneak + right-click: set area pos1",
+  "item.squire.squire_lance.tooltip3": "Sneak + left-click: set area pos2",
+  "item.squire.squire_shield.tooltip1": "A sturdy shield bearing your squire's crest",
+  "item.squire.squire_armor.tooltip1": "Between iron and diamond tier",
+  "item.squire.squire_armor.tooltip2": "Set Bonus: Passive regen when all 4 pieces worn by squire",
+
   "squire.radial.title": "Squire Commands",
   "squire.radial.follow": "Follow",
   "squire.radial.guard": "Guard",

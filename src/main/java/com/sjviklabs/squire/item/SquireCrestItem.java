@@ -16,8 +16,11 @@ import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.Level;
+
+import java.util.List;
 
 /**
  * Squire's Crest item. Right-click ground to summon a new squire.
@@ -28,6 +31,12 @@ public class SquireCrestItem extends Item {
 
     public SquireCrestItem(Properties properties) {
         super(properties);
+    }
+
+    @Override
+    public void appendHoverText(ItemStack stack, TooltipContext context, List<Component> tooltipComponents, TooltipFlag tooltipFlag) {
+        tooltipComponents.add(Component.translatable("item.squire.squire_badge.tooltip1").withStyle(net.minecraft.ChatFormatting.GRAY));
+        tooltipComponents.add(Component.translatable("item.squire.squire_badge.tooltip2").withStyle(net.minecraft.ChatFormatting.DARK_GRAY));
     }
 
     @Override
