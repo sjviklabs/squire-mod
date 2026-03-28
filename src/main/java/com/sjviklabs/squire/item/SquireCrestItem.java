@@ -38,7 +38,7 @@ import java.util.UUID;
  * Enforces max squire limit per player. Null-safe for fake players/dispensers.
  */
 public class SquireCrestItem extends Item {
-    // ---- Area selection state (migrated from SquireLanceItem) ----
+    // ---- Area selection state ----
     private static final Map<UUID, BlockPos> pos1Map = new HashMap<>();
     private static final Map<UUID, BlockPos> pos2Map = new HashMap<>();
 
@@ -161,7 +161,7 @@ public class SquireCrestItem extends Item {
         return InteractionResultHolder.success(stack);
     }
 
-    // ---- Area selection preview (migrated from SquireLanceItem) ----
+    // ---- Area selection preview ----
 
     private InteractionResultHolder<ItemStack> triggerPreview(ServerPlayer player, ItemStack stack) {
         UUID uuid = player.getUUID();

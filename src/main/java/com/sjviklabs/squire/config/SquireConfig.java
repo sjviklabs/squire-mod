@@ -44,6 +44,7 @@ public final class SquireConfig {
     public static final ModConfigSpec.DoubleValue breakSpeedMultiplier;
     public static final ModConfigSpec.DoubleValue miningSpeedPerLevel;
     public static final ModConfigSpec.IntValue maxClearVolume;
+    public static final ModConfigSpec.IntValue clearConfirmThreshold;
 
     // --- Placing ---
     public static final ModConfigSpec.DoubleValue placeReach;
@@ -245,6 +246,9 @@ public final class SquireConfig {
         maxClearVolume = builder
                 .comment("Maximum number of blocks allowed in a /squire clear command. Prevents accidental massive clears.")
                 .defineInRange("maxClearVolume", 32768, 1, 1000000);
+        clearConfirmThreshold = builder
+                .comment("Area clears above this block count require /squire clear confirm. Below this, clearing starts immediately.")
+                .defineInRange("clearConfirmThreshold", 500, 1, 100000);
         builder.pop();
 
         // ---- Placing ----

@@ -74,7 +74,7 @@ public enum SquireTier {
     /** Mounted movement (riding horses). */
     public boolean canMount() { return isAtLeast(KNIGHT); }
 
-    /** Mounted combat (lance charge). Tier 4 exclusive. */
+    /** Mounted combat. Tier 4 exclusive. */
     public boolean canMountedCombat() { return this == CHAMPION; }
 
     /** Halberd sweep. */

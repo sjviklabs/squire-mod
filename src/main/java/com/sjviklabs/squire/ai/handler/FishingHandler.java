@@ -34,6 +34,11 @@ public class FishingHandler {
     @Nullable private BlockPos waterPos;      // water block squire faces
     private boolean fishing;
     private int catchCooldown;
+    private int approachTicks;
+    private double lastApproachDistSq = Double.MAX_VALUE;
+    private int stuckTicks;
+    private static final int STUCK_TIMEOUT = 100;
+    private static final int MAX_APPROACH_TICKS = 200;
 
     public FishingHandler(SquireEntity squire) {
         this.squire = squire;
@@ -78,11 +83,33 @@ public class FishingHandler {
 
         if (distSq <= 4.0) { // within 2 blocks
             s.getNavigation().stop();
+            approachTicks = 0;
+            stuckTicks = 0;
+            lastApproachDistSq = Double.MAX_VALUE;
             return SquireAIState.FISHING_IDLE;
         }
 
         s.getNavigation().moveTo(waterEdgePos.getX() + 0.5,
                 waterEdgePos.getY(), waterEdgePos.getZ() + 0.5, 1.0);
+
+        // Stuck detection — try finding a different water edge
+        approachTicks++;
+        if (distSq < lastApproachDistSq - 0.1) {
+            stuckTicks = 0;
+            lastApproachDistSq = distSq;
+        } else {
+            stuckTicks++;
+        }
+
+        if (stuckTicks >= STUCK_TIMEOUT || approachTicks >= MAX_APPROACH_TICKS) {
+            var log = s.getActivityLog();
+            if (log != null) {
+                log.log("FISH", "Can't reach water edge at " + waterEdgePos.toShortString() + ", giving up");
+            }
+            stop();
+            return SquireAIState.IDLE;
+        }
+
         return SquireAIState.FISHING_APPROACH;
     }
 

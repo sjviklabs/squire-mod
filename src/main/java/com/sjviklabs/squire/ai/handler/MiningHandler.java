@@ -46,8 +46,10 @@ public class MiningHandler {
     private int approachTicks;          // ticks spent trying to reach current target
     private double lastApproachDistSq;  // distance last time we checked for progress
     private int stuckTicks;             // ticks with no progress toward target
+    private int repositionAttempts;     // how many times we've tried repositioning for this target
     private static final int STUCK_TIMEOUT = 100;  // 5 seconds with no progress = stuck
     private static final int MAX_APPROACH_TICKS = 200;  // 10 seconds absolute max to reach target
+    private static final int MAX_REPOSITION_ATTEMPTS = 3; // try 3 different approach angles before skipping
 
     public MiningHandler(SquireEntity squire) {
         this.squire = squire;
@@ -60,6 +62,7 @@ public class MiningHandler {
         this.lastCrackStage = -1;
         this.approachTicks = 0;
         this.stuckTicks = 0;
+        this.repositionAttempts = 0;
         this.lastApproachDistSq = Double.MAX_VALUE;
     }
 
@@ -188,13 +191,36 @@ public class MiningHandler {
         }
 
         if (stuckTicks >= STUCK_TIMEOUT || approachTicks >= MAX_APPROACH_TICKS) {
+            repositionAttempts++;
             var log = s.getActivityLog();
-            if (log != null) {
-                log.log("MINE", "Can't reach block at " + targetPos.toShortString() + ", skipping");
+
+            // Try repositioning: navigate to a different side of the target block
+            if (repositionAttempts <= MAX_REPOSITION_ATTEMPTS) {
+                BlockPos reposition = findApproachPosition(s, targetPos, repositionAttempts);
+                if (reposition != null) {
+                    if (log != null) {
+                        log.log("MINE", "Repositioning to reach " + targetPos.toShortString()
+                                + " (attempt " + repositionAttempts + ")");
+                    }
+                    // Reset stuck counters but keep reposition count
+                    approachTicks = 0;
+                    stuckTicks = 0;
+                    lastApproachDistSq = Double.MAX_VALUE;
+                    s.getNavigation().moveTo(reposition.getX() + 0.5,
+                            reposition.getY(), reposition.getZ() + 0.5, 1.0D);
+                    return SquireAIState.MINING_APPROACH;
+                }
             }
-            // Area clearing: skip to next reachable block
+
+            // All reposition attempts exhausted — skip this block
+            if (log != null) {
+                log.log("MINE", "Can't reach block at " + targetPos.toShortString()
+                        + " after " + repositionAttempts + " attempts, skipping");
+            }
+
             if (areaClearing) {
-                BlockPos next = popNextValid(s);
+                // Find nearest reachable block instead of just the next in queue order
+                BlockPos next = popNearestReachable(s);
                 if (next != null) {
                     setTarget(next);
                     return SquireAIState.MINING_APPROACH;
@@ -370,6 +396,80 @@ public class MiningHandler {
             if (state.isAir()) continue;
             if (state.getDestroySpeed(s.level(), candidate) < 0) continue;
             return candidate;
+        }
+        return null;
+    }
+
+    /**
+     * Find the nearest valid block in the queue by distance to the squire.
+     * Removes it from the queue. Prefers blocks at or below the squire's Y level
+     * since those are more likely to be reachable. Returns null if queue is exhausted.
+     */
+    @Nullable
+    private BlockPos popNearestReachable(SquireEntity s) {
+        if (blockQueue.isEmpty()) return null;
+
+        BlockPos best = null;
+        double bestScore = Double.MAX_VALUE;
+        int squireY = s.blockPosition().getY();
+
+        for (BlockPos candidate : blockQueue) {
+            BlockState state = s.level().getBlockState(candidate);
+            if (state.isAir()) continue;
+            if (state.getDestroySpeed(s.level(), candidate) < 0) continue;
+
+            double dist = s.distanceToSqr(candidate.getX() + 0.5,
+                    candidate.getY() + 0.5, candidate.getZ() + 0.5);
+            // Penalize blocks above the squire — they're harder to reach
+            int heightAbove = candidate.getY() - squireY;
+            double penalty = heightAbove > 0 ? heightAbove * 10.0 : 0;
+            double score = dist + penalty;
+
+            if (score < bestScore) {
+                bestScore = score;
+                best = candidate;
+            }
+        }
+
+        if (best != null) {
+            blockQueue.remove(best);
+        }
+        return best;
+    }
+
+    /**
+     * Find an alternative position to approach a target block from a different angle.
+     * Tries cardinal directions and diagonals at the target's Y level and one below.
+     * Returns null if no valid approach position found.
+     */
+    @Nullable
+    private BlockPos findApproachPosition(SquireEntity s, BlockPos target, int attempt) {
+        // Try different approach angles based on attempt number
+        int[][] offsets = {
+                {2, 0}, {-2, 0}, {0, 2}, {0, -2},  // cardinal at distance 2
+                {2, 2}, {-2, 2}, {2, -2}, {-2, -2}, // diagonals
+                {3, 0}, {0, 3}, {-3, 0}, {0, -3},   // cardinal at distance 3
+        };
+
+        // Rotate starting index by attempt so each try uses different offsets
+        int startIdx = (attempt - 1) * 4;
+
+        for (int i = 0; i < offsets.length; i++) {
+            int idx = (startIdx + i) % offsets.length;
+            int dx = offsets[idx][0];
+            int dz = offsets[idx][1];
+
+            // Try at target Y and one level below (for blocks above squire)
+            for (int dy = 0; dy >= -2; dy--) {
+                BlockPos candidate = target.offset(dx, dy, dz);
+                BlockState at = s.level().getBlockState(candidate);
+                BlockState above = s.level().getBlockState(candidate.above());
+                BlockState below = s.level().getBlockState(candidate.below());
+
+                if (below.isSolid() && at.isAir() && above.isAir()) {
+                    return candidate;
+                }
+            }
         }
         return null;
     }

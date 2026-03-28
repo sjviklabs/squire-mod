@@ -31,7 +31,7 @@ public class SignpostBlock extends HorizontalDirectionalBlock implements EntityB
 
     public static final MapCodec<SignpostBlock> CODEC = simpleCodec(SignpostBlock::new);
 
-    /** Tracks which signpost each player last clicked with the lance (for linking). */
+    /** Tracks which signpost each player last clicked with the crest (for linking). */
     private static final Map<UUID, BlockPos> PENDING_LINKS = new HashMap<>();
 
     public SignpostBlock(Properties properties) {

@@ -101,8 +101,19 @@ public class SquireCommand {
                 .then(Commands.literal("mine")
                         .requires(src -> src.hasPermission(2))
                         .executes(ctx -> mineTargeted(ctx.getSource()))
+                        .then(Commands.literal("stop")
+                                .executes(ctx -> cancelClear(ctx.getSource()))
+                        )
+                        .then(Commands.literal("confirm")
+                                .executes(ctx -> confirmClear(ctx.getSource()))
+                        )
                         .then(Commands.argument("pos", BlockPosArgument.blockPos())
                                 .executes(ctx -> orderMine(ctx.getSource(), BlockPosArgument.getLoadedBlockPos(ctx, "pos")))
+                                .then(Commands.argument("to", BlockPosArgument.blockPos())
+                                        .executes(ctx -> previewClear(ctx.getSource(),
+                                                BlockPosArgument.getLoadedBlockPos(ctx, "pos"),
+                                                BlockPosArgument.getLoadedBlockPos(ctx, "to")))
+                                )
                         )
                 )
                 .then(Commands.literal("place")
@@ -115,12 +126,16 @@ public class SquireCommand {
                                 )
                         )
                 )
+                // Legacy alias — /squire clear still works for backward compatibility
                 .then(Commands.literal("clear")
                         .requires(src -> src.hasPermission(2))
                         .then(Commands.literal("confirm")
                                 .executes(ctx -> confirmClear(ctx.getSource()))
                         )
                         .then(Commands.literal("cancel")
+                                .executes(ctx -> cancelClear(ctx.getSource()))
+                        )
+                        .then(Commands.literal("stop")
                                 .executes(ctx -> cancelClear(ctx.getSource()))
                         )
                         .then(Commands.argument("from", BlockPosArgument.blockPos())
@@ -484,7 +499,7 @@ public class SquireCommand {
     }
 
     /**
-     * Core preview logic, usable from both the command and the lance item.
+     * Core preview logic, usable from both the command and the crest item.
      * Returns volume on success, 0 on failure (with chat feedback to player).
      */
     public static int previewClearForPlayer(ServerPlayer player, BlockPos from, BlockPos to) {
@@ -510,12 +525,32 @@ public class SquireCommand {
             return 0;
         }
 
-        long tick = player.server.getTickCount();
-        pendingClears.put(player.getUUID(), new PendingClear(from, to, dx, dy, dz, tick));
-
+        // Show particle outline regardless of size
         if (player.level() instanceof ServerLevel level) {
             spawnOutlineParticles(level, from, to);
         }
+
+        // Small areas: auto-start immediately. Large areas: require confirm.
+        int confirmThreshold = SquireConfig.clearConfirmThreshold.get();
+        if (volume <= confirmThreshold) {
+            int queued = ai.getMining().setAreaTarget(from, to);
+            if (queued == 0) {
+                player.displayClientMessage(Component.literal("No breakable blocks found in region."), true);
+                return 0;
+            }
+            ai.getMachine().forceState(SquireAIState.MINING_APPROACH);
+            var log = squire.getActivityLog();
+            if (log != null) {
+                log.log("CLEAR", "Starting area clear, " + queued + " blocks queued");
+            }
+            player.displayClientMessage(Component.literal(
+                    "Squire clearing " + dx + "x" + dy + "x" + dz + " (" + queued + " blocks)."), false);
+            return queued;
+        }
+
+        // Large area: store as pending, require confirm
+        long tick = player.server.getTickCount();
+        pendingClears.put(player.getUUID(), new PendingClear(from, to, dx, dy, dz, tick));
 
         player.displayClientMessage(Component.literal(
                 "Clear preview: " + dx + "x" + dy + "x" + dz + " (" + volume + " blocks). " +
@@ -530,7 +565,7 @@ public class SquireCommand {
         }
         PendingClear pending = pendingClears.remove(player.getUUID());
         if (pending == null) {
-            source.sendFailure(Component.literal("No pending clear to confirm. Use /squire clear <from> <to> or the lance first."));
+            source.sendFailure(Component.literal("No pending clear to confirm. Use /squire clear <from> <to> or the crest first."));
             return 0;
         }
         SquireEntity squire = findOwnedSquire(source, player);
@@ -1006,7 +1041,7 @@ public class SquireCommand {
 
     /**
      * Find the first squire owned by the given player (no command context needed).
-     * Used by lance item and other non-command callers.
+     * Used by crest item and other non-command callers.
      */
     static SquireEntity findOwnedSquireByPlayer(ServerPlayer player) {
         for (ServerLevel level : player.server.getAllLevels()) {

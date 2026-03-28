@@ -41,6 +41,11 @@ public class FarmingHandler {
     private int actionTicksRemaining;
     private int scanCooldown;
     private boolean farming;
+    private int approachTicks;
+    private double lastApproachDistSq = Double.MAX_VALUE;
+    private int stuckTicks;
+    private static final int STUCK_TIMEOUT = 100;   // 5 seconds
+    private static final int MAX_APPROACH_TICKS = 200; // 10 seconds
 
     private enum FarmAction { TILL, PLANT, HARVEST }
 
@@ -90,6 +95,9 @@ public class FarmingHandler {
         double reach = SquireConfig.farmReach.get();
 
         if (distSq <= reach * reach) {
+            approachTicks = 0;
+            stuckTicks = 0;
+            lastApproachDistSq = Double.MAX_VALUE;
             actionTicksRemaining = SquireConfig.farmTicksPerBlock.get();
             return SquireAIState.FARM_WORK;
         }
@@ -97,6 +105,28 @@ public class FarmingHandler {
         // Path to target
         s.getNavigation().moveTo(currentTarget.getX() + 0.5,
                 currentTarget.getY(), currentTarget.getZ() + 0.5, 1.0);
+
+        // Stuck detection
+        approachTicks++;
+        if (distSq < lastApproachDistSq - 0.1) {
+            stuckTicks = 0;
+            lastApproachDistSq = distSq;
+        } else {
+            stuckTicks++;
+        }
+
+        if (stuckTicks >= STUCK_TIMEOUT || approachTicks >= MAX_APPROACH_TICKS) {
+            var log = s.getActivityLog();
+            if (log != null) {
+                log.log("FARM", "Can't reach " + currentTarget.toShortString() + ", skipping to next");
+            }
+            currentTarget = null;
+            approachTicks = 0;
+            stuckTicks = 0;
+            lastApproachDistSq = Double.MAX_VALUE;
+            return SquireAIState.FARM_SCAN;
+        }
+
         return SquireAIState.FARM_APPROACH;
     }
 
