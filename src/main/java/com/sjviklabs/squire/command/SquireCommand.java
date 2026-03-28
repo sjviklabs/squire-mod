@@ -9,6 +9,7 @@ import com.sjviklabs.squire.ai.statemachine.SquireAI;
 import com.sjviklabs.squire.ai.statemachine.SquireAIState;
 import com.sjviklabs.squire.block.SignpostBlockEntity;
 import com.sjviklabs.squire.config.SquireConfig;
+import com.sjviklabs.squire.entity.SquireDataAttachment;
 import com.sjviklabs.squire.entity.SquireEntity;
 import com.sjviklabs.squire.init.ModBlocks;
 import com.sjviklabs.squire.init.ModEntities;
@@ -251,6 +252,26 @@ public class SquireCommand {
                 .then(Commands.literal("come")
                         .executes(ctx -> orderCome(ctx.getSource()))
                 )
+                .then(Commands.literal("reset")
+                        .executes(ctx -> resetSquire(ctx.getSource()))
+                )
+                // ---- OP-only admin commands ----
+                .then(Commands.literal("tp")
+                        .requires(src -> src.hasPermission(2))
+                        .then(Commands.argument("player", EntityArgument.player())
+                                .executes(ctx -> tpSquireTo(ctx.getSource(), EntityArgument.getPlayer(ctx, "player")))
+                        )
+                )
+                .then(Commands.literal("heal")
+                        .requires(src -> src.hasPermission(2))
+                        .executes(ctx -> healSquire(ctx.getSource()))
+                )
+                .then(Commands.literal("setlevel")
+                        .requires(src -> src.hasPermission(2))
+                        .then(Commands.argument("level", IntegerArgumentType.integer(0, 30))
+                                .executes(ctx -> setLevel(ctx.getSource(), IntegerArgumentType.getInteger(ctx, "level")))
+                        )
+                )
         );
     }
 
@@ -301,6 +322,118 @@ public class SquireCommand {
             source.sendFailure(Component.literal("No safe spot found near you."));
             return 0;
         }
+    }
+
+    // ------------------------------------------------------------------
+    // /squire reset — full state wipe, emergency unstick
+    // ------------------------------------------------------------------
+
+    private static int resetSquire(CommandSourceStack source) {
+        if (!(source.getEntity() instanceof ServerPlayer player)) return 0;
+        SquireEntity squire = findOwnedSquire(source, player);
+        if (squire == null) {
+            source.sendFailure(Component.literal("You don't have an active squire."));
+            return 0;
+        }
+
+        var ai = squire.getSquireAI();
+        if (ai != null) {
+            // Cancel all work behaviors
+            ai.getMining().clearTarget();
+            ai.getPatrol().stopPatrol();
+            ai.getFarming().stop();
+            ai.getFishing().stop();
+            ai.getChest().clearTarget();
+
+            // Reset combat
+            squire.setTarget(null);
+            squire.setDrawingBow(false);
+        }
+
+        // Clear task queue
+        squire.getTaskQueue().clear();
+
+        // Stop navigation
+        squire.getNavigation().stop();
+
+        // Set to follow mode
+        squire.setSquireMode(SquireEntity.MODE_FOLLOW);
+        squire.setSquireSprinting(false);
+
+        // Teleport to owner
+        squire.moveTo(player.getX(), player.getY(), player.getZ(), player.getYRot(), 0);
+
+        var log = squire.getActivityLog();
+        if (log != null) {
+            log.log("RESET", "Full state reset by owner command");
+        }
+
+        source.sendSuccess(() -> Component.literal("Squire reset. All tasks cancelled, following you."), false);
+        return 1;
+    }
+
+    // ------------------------------------------------------------------
+    // /squire tp <player> — teleport a player's squire to them (op 2)
+    // ------------------------------------------------------------------
+
+    private static int tpSquireTo(CommandSourceStack source, ServerPlayer targetPlayer) {
+        SquireEntity squire = null;
+        for (ServerLevel level : source.getServer().getAllLevels()) {
+            for (SquireEntity s : level.getEntities(com.sjviklabs.squire.init.ModEntities.SQUIRE.get(), e -> true)) {
+                if (s.isAlive() && s.isOwnedBy(targetPlayer)) {
+                    squire = s;
+                    break;
+                }
+            }
+            if (squire != null) break;
+        }
+        if (squire == null) {
+            source.sendFailure(Component.literal(targetPlayer.getName().getString() + " has no active squire."));
+            return 0;
+        }
+        squire.moveTo(targetPlayer.getX(), targetPlayer.getY(), targetPlayer.getZ(), targetPlayer.getYRot(), 0);
+        squire.getNavigation().stop();
+        source.sendSuccess(() -> Component.literal("Teleported " + targetPlayer.getName().getString() + "'s squire to them."), true);
+        return 1;
+    }
+
+    // ------------------------------------------------------------------
+    // /squire heal — fully heal your squire (op 2)
+    // ------------------------------------------------------------------
+
+    private static int healSquire(CommandSourceStack source) {
+        if (!(source.getEntity() instanceof ServerPlayer player)) return 0;
+        SquireEntity squire = findOwnedSquire(source, player);
+        if (squire == null) {
+            source.sendFailure(Component.literal("You don't have an active squire."));
+            return 0;
+        }
+        squire.setHealth(squire.getMaxHealth());
+        source.sendSuccess(() -> Component.literal("Squire healed to full HP (" + String.format("%.0f", squire.getMaxHealth()) + ")."), false);
+        return 1;
+    }
+
+    // ------------------------------------------------------------------
+    // /squire setlevel <level> — set squire level directly (op 2)
+    // ------------------------------------------------------------------
+
+    private static int setLevel(CommandSourceStack source, int level) {
+        if (!(source.getEntity() instanceof ServerPlayer player)) return 0;
+        SquireEntity squire = findOwnedSquire(source, player);
+        if (squire == null) {
+            source.sendFailure(Component.literal("You don't have an active squire."));
+            return 0;
+        }
+        int xpNeeded = com.sjviklabs.squire.util.SquireAbilities.xpForLevel(level, SquireConfig.xpPerLevel.get());
+        squire.getProgression().setFromAttachment(xpNeeded, level);
+
+        // Sync to player attachment
+        var data = player.getData(SquireDataAttachment.SQUIRE_DATA.get());
+        player.setData(SquireDataAttachment.SQUIRE_DATA.get(), data.withXP(xpNeeded, level));
+
+        source.sendSuccess(() -> Component.literal("Squire set to Level " + level
+                + " (" + com.sjviklabs.squire.entity.SquireTier.forLevel(level).getDisplayName() + ")."), true);
+        return 1;
     }
 
     // ------------------------------------------------------------------
