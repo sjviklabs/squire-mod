@@ -70,7 +70,6 @@ Each level also grants bonus health, damage, and movement speed.
 | Item | How to Get | Use |
 |------|-----------|-----|
 | **Squire's Crest** | Craft | Right-click to summon/recall your squire |
-| **Squire's Lance** | Craft | Area selection tool for clear commands |
 
 ## Installation
 

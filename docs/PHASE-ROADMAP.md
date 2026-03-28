@@ -122,15 +122,6 @@ A true player-equivalent companion entity for Minecraft. The squire walks, fight
 
 **Goal:** Custom equipment, mounted combat, and patrol system. The squire becomes a proper knight defending your colony.
 
-### Squire's Lance (Weapon)
-- [x] Dual-purpose item:
-  - **Sneaking + use:** area selection tool (current behavior)
-  - **Normal use:** melee weapon with extended reach
-- [x] Stats: 4.5 block reach (on foot), 6.0 (mounted). Slow attack speed (0.8). 5 base damage, speed-based mounted charge bonus.
-- [x] Mounted charge: speed-based bonus damage when riding a horse above sprint threshold
-- [x] Durability: 800 (breaks faster than diamond sword)
-- [x] Usable by both player and squire
-
 ### Squire's Shield
 - [x] Custom placeholder texture
 - [x] Functionally identical to vanilla shield
@@ -156,7 +147,7 @@ A true player-equivalent companion entity for Minecraft. The squire walks, fight
 - [x] Squire auto-mounts assigned horse when entering patrol or follow mode
 - [x] Horse persists across restarts via UUID lookup
 - [x] Mounted movement: squire controls the horse via direct navigation
-- [x] Lance reach extended to 6.0 while mounted, charge bonus damage
+- [x] Halberd reach extended while mounted
 - [x] MOUNTING, MOUNTED_IDLE, MOUNTED_FOLLOW, MOUNTED_COMBAT states
 - [x] Config: horseSearchRange, autoMountEnabled
 

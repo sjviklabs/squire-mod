@@ -19,7 +19,7 @@ The squire no longer spawns combat-ready. It starts as a servant and earns its w
 | 1 | Apprentice | 5-9 | Melee combat, auto-torch (Lv5), block placing, mining (Lv5), foot patrol (Lv8), 18-slot pack |
 | 2 | Squire | 10-19 | Ranged combat/bows (Lv10), area clear (Lv10), chest deposit/fetch (Lv12), task queue (Lv10), shield blocking (Lv15), vein mining (Lv15), 27-slot knapsack |
 | 3 | Knight | 20-29 | Halberd sweep (Lv20), fire resistance (Lv20), thorns (Lv22), lifesteal (Lv25), fortune sense (Lv25), mounted movement (Lv25), 36-slot war chest |
-| 4 | Champion | 30 | Mounted combat + lance charge, undying (revive), tireless, full champion armor visuals |
+| 4 | Champion | 30 | Mounted combat, undying (revive), tireless, full champion armor visuals |
 
 ### XP Sources — All Equal
 

@@ -371,8 +371,10 @@ public class SquireEntity extends TamableAnimal implements RangedAttackMob {
                 return; // Cancel death
             }
 
-            // Drop all inventory contents
-            this.inventory.dropAll(this.level(), this.blockPosition());
+            // Drop all inventory contents (respects keepInventory gamerule)
+            if (!this.level().getGameRules().getBoolean(net.minecraft.world.level.GameRules.RULE_KEEPINVENTORY)) {
+                this.inventory.dropAll(this.level(), this.blockPosition());
+            }
 
             // Release any force-loaded chunks
             SquireChunkLoader.release(this);
@@ -470,11 +472,11 @@ public class SquireEntity extends TamableAnimal implements RangedAttackMob {
         this.playSound(SoundEvents.ARROW_SHOOT, 1.0F, 1.0F / (this.getRandom().nextFloat() * 0.4F + 0.8F));
     }
 
-    /** Find arrow stack in squire inventory. */
+    /** Find arrow stack in squire inventory (supports regular, tipped, and spectral arrows). */
     public ItemStack findArrowInInventory() {
         for (int i = 0; i < this.inventory.getContainerSize(); i++) {
             ItemStack stack = this.inventory.getItem(i);
-            if (!stack.isEmpty() && stack.getItem() == Items.ARROW) {
+            if (!stack.isEmpty() && stack.getItem() instanceof net.minecraft.world.item.ArrowItem) {
                 return stack;
             }
         }
@@ -578,6 +580,18 @@ public class SquireEntity extends TamableAnimal implements RangedAttackMob {
                 }
             }
             this.squireAI.tick();
+
+            // One-time migration: copy entity progression to player attachment
+            if (this.isTame() && this.getOwner() instanceof ServerPlayer owner) {
+                var data = owner.getData(SquireDataAttachment.SQUIRE_DATA.get());
+                if (data.level() == 0 && this.getSquireLevel() > 0) {
+                    owner.setData(SquireDataAttachment.SQUIRE_DATA.get(),
+                            data.withXP(this.progression.getTotalXP(), this.getSquireLevel())
+                                    .withSquireUUID(this.getUUID())
+                                    .withName(this.hasCustomName() ? this.getCustomName().getString() : "Squire")
+                                    .withAppearance(this.isSlimModel()));
+                }
+            }
 
             // Tier 0: clear proactive aggro targets (keep reactive defense)
             if (!this.getTier().canFight() && this.getTarget() != null) {

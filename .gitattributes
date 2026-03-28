@@ -1,5 +1,31 @@
-# Disable autocrlf on generated files, they always generate with LF
-# Add any extra files or paths here to make git stop saying they
-# are changed when only line endings change.
+# Auto-detect text files and normalize line endings
+* text=auto
+
+# Java sources — always LF
+*.java text eol=lf
+
+# Gradle
+*.gradle text eol=lf
+gradlew text eol=lf
+gradlew.bat text eol=crlf
+gradle.properties text eol=lf
+
+# Resources
+*.json text eol=lf
+*.toml text eol=lf
+*.cfg text eol=lf
+
+# Scripts
+*.sh text eol=lf
+
+# Docs
+*.md text eol=lf
+
+# NeoForge data generation output
 src/generated/**/.cache/cache text eol=lf
 src/generated/**/*.json text eol=lf
+
+# Binary files — no diff, no merge
+*.png binary
+*.jar binary
+*.zip binary

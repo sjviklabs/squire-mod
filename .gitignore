@@ -1,47 +1,49 @@
-# eclipse
-bin
+# Eclipse
+bin/
 *.launch
-.settings
-.metadata
+.settings/
+.metadata/
 .classpath
 .project
 
-# idea
-out
+# IntelliJ IDEA
+out/
 *.ipr
 *.iws
 *.iml
-.idea
+.idea/
 
-# gradle
-build
-.gradle
+# VS Code
+.vscode/
 
-# other
-eclipse
-run
-runs
-run-data
+# Gradle
+build/
+.gradle/
 
-repo
-logs
+# NeoForge / Minecraft
+run/
+runs/
+run-data/
 src/generated/
+crash-reports/
+logs/
+*.log
+run_output.txt
+
+# OS
 .DS_Store
 Thumbs.db
+desktop.ini
+ehthumbs.db
 
-# secrets / env
+# Secrets / env
 .env
 *.pem
 *.key
 
-# OS
-desktop.ini
-ehthumbs.db
-
-# releases (local JAR staging — not committed)
+# Releases (local JAR staging)
 releases/
 
-# local testing
-crash-reports/
-*.log\"run_output.txt\"  
-run_output.txt 
+# Other
+repo/
+eclipse/

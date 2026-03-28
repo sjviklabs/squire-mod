@@ -48,7 +48,7 @@ v0.6.0+ — Advanced AI (deferred)
   - [x] Bow-only during COMBAT_RANGED (swaps back to melee on exit)
   - [x] Shield stowed when bow equipped, re-equipped on melee swap
   - [x] Nametag/health bar repositioned above head
-  - [x] `isMeleeWeapon()` helper: recognizes `SquireLanceItem` alongside `SwordItem`/`AxeItem`
+  - [x] `isMeleeWeapon()` helper: recognizes `SquireHalberdItem` alongside `SwordItem`/`AxeItem`
   - [x] `DRAWING_BOW` synched data + `BOW_AND_ARROW` arm pose in renderer
   - [x] `setDrawingBow(false)` on all combat exit paths including `disengageCombat()`
 - **Remaining:**
@@ -291,7 +291,7 @@ Track what was done each session. Keep it short.
 - Next: Rebuild and retest bow fixes, then start Visual Progression or Radial Menu
 
 ### 2026-03-25 (Session 3)
-- Fixed ranged→melee weapon swap bug: added `isMeleeWeapon()` helper to `SquireEquipmentHelper` recognizing `SquireLanceItem` alongside `SwordItem`/`AxeItem`
+- Fixed ranged→melee weapon swap bug: added `isMeleeWeapon()` helper to `SquireEquipmentHelper` recognizing `SquireHalberdItem` alongside `SwordItem`/`AxeItem`
 - Patched all 3 weapon scan locations: `tryAutoEquip()`, `runFullEquipCheck()`, `switchToMeleeLoadout()`
 - Added bow draw arm pose: `DRAWING_BOW` synched data on `SquireEntity`, `BOW_AND_ARROW` arm pose in `SquireRenderer`
 - Added `setDrawingBow(false)` to all `tickRanged()` exit paths and `disengageCombat()`

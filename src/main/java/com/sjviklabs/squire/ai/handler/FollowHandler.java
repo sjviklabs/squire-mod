@@ -76,8 +76,8 @@ public class FollowHandler {
 
         double distSq = s.distanceToSqr(owner);
 
-        // Teleport to owner if too far away (like tamed wolves)
-        if (distSq > 24.0 * 24.0) {
+        // Emergency catch-up if too far away (same dimension only)
+        if (distSq > 24.0 * 24.0 && s.level().dimension() == owner.level().dimension()) {
             if (tryTeleportToOwner(s, owner)) {
                 return SquireAIState.FOLLOWING_OWNER;
             }
