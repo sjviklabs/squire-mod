@@ -492,6 +492,48 @@ public class SquireEntity extends TamableAnimal implements RangedAttackMob {
     }
 
     // ================================================================
+    // Movement parity — ladder climbing, boat riding, portal following
+    // ================================================================
+
+    /**
+     * When on a climbable block and pathfinding requires upward movement,
+     * apply upward velocity. Without this, the entity pathfinds TO the ladder
+     * but doesn't actually climb it.
+     */
+    private void handleClimbing() {
+        if (this.onClimbable()) {
+            var path = this.getNavigation().getPath();
+            if (path != null && !path.isDone()) {
+                var nextNode = path.getNextNode();
+                if (nextNode != null && nextNode.y > this.getY()) {
+                    this.setDeltaMovement(
+                            this.getDeltaMovement().x,
+                            0.2D,
+                            this.getDeltaMovement().z);
+                }
+            }
+            this.resetFallDistance();
+        }
+    }
+
+    /**
+     * Check if owner is in a boat and squire should board as passenger.
+     * Only called when in FOLLOW mode. Boards if within 3 blocks and boat
+     * has a free passenger slot.
+     */
+    private void handleBoatFollowing() {
+        if (this.isPassenger()) return;
+        if (this.getOwner() == null) return;
+
+        var owner = this.getOwner();
+        if (owner.getVehicle() instanceof net.minecraft.world.entity.vehicle.Boat boat) {
+            if (this.distanceToSqr(boat) < 9.0 && boat.getPassengers().size() < 2) {
+                this.startRiding(boat);
+            }
+        }
+    }
+
+    // ================================================================
     // Swimming — boost speed in water to keep up with player
     // ================================================================
 
@@ -543,6 +585,14 @@ public class SquireEntity extends TamableAnimal implements RangedAttackMob {
                 if (this.getLastHurtByMob() != this.getTarget()) {
                     this.setTarget(null);
                 }
+            }
+
+            // Ladder/vine climbing: apply upward velocity when pathfinding requires it
+            handleClimbing();
+
+            // Boat following: board owner's boat when in follow mode and within range
+            if (this.shouldFollowOwner()) {
+                handleBoatFollowing();
             }
 
             // Chunk loading: keep squire's chunk loaded during area clear if owner is online
