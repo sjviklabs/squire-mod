@@ -13,13 +13,18 @@
 
   "item.squire.squire_badge": "Squire's Crest",
   "item.squire.squire_badge.tooltip1": "Right-click ground to summon, air to recall",
+  "item.squire.squire_badge.tooltip2": "Sneak+click to set area corners",
+  "item.squire.squire_badge.tooltip3": "Your squire's bond. Craft another if lost.",
   "item.squire.squire_guidebook": "Squire's Guidebook",
   "item.squire.squire_guidebook.tooltip1": "Wisdom of Ser Aldric the Faithful",
   "item.squire.squire_shield": "Squire's Shield",
+  "item.squire.squire_shield.tooltip1": "A sturdy shield for your companion",
   "item.squire.squire_helmet": "Squire's Helmet",
   "item.squire.squire_chestplate": "Squire's Chestplate",
   "item.squire.squire_leggings": "Squire's Leggings",
   "item.squire.squire_boots": "Squire's Boots",
+  "item.squire.squire_armor.tooltip1": "Part of the Squire's armor set",
+  "item.squire.squire_armor.tooltip2": "Full set: Regen I every 10s (squire only)",
   "item.squire.signpost": "Signpost",
 
   "tier.squire.recruit": "Recruit",
@@ -59,6 +64,10 @@
   "squire.combat.tactic.explosive": "Creeper! Staying back!",
   "squire.combat.tactic.passive": "Don't look at it...",
   "squire.combat.tactic.default": "Engaging!",
+
+  "squire.crest.limit": "Maximum squires reached (%d)",
+  "squire.crest.no_squire": "You don't have an active squire",
+  "squire.crest.recall": "Squire recalled!",
 
   "squire.danger.fleeing": "Squire is fleeing from %s!",
   "squire.come.teleport": "Squire teleported to your side.",
