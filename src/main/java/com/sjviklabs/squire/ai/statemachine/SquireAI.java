@@ -1,6 +1,7 @@
 package com.sjviklabs.squire.ai.statemachine;
 
 import com.sjviklabs.squire.ai.handler.ChatHandler;
+import com.sjviklabs.squire.ai.handler.DangerHandler;
 import com.sjviklabs.squire.ai.handler.ChestHandler;
 import com.sjviklabs.squire.ai.handler.CombatHandler;
 import com.sjviklabs.squire.ai.handler.FarmingHandler;
@@ -13,7 +14,10 @@ import com.sjviklabs.squire.ai.handler.PatrolHandler;
 import com.sjviklabs.squire.ai.handler.PlacingHandler;
 import com.sjviklabs.squire.ai.handler.SurvivalHandler;
 import com.sjviklabs.squire.ai.handler.TorchHandler;
+import com.sjviklabs.squire.config.SquireConfig;
 import com.sjviklabs.squire.entity.SquireEntity;
+import com.sjviklabs.squire.entity.SquireTier;
+import com.sjviklabs.squire.util.SquireEquipmentHelper;
 import com.sjviklabs.squire.util.TaskQueue;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.player.Player;
@@ -48,6 +52,7 @@ public class SquireAI {
     private final PatrolHandler patrol;
     private final FarmingHandler farming;
     private final FishingHandler fishing;
+    private final DangerHandler danger;
     private int idleTicks;
 
     public SquireAI(SquireEntity squire) {
@@ -66,6 +71,7 @@ public class SquireAI {
         this.patrol = new PatrolHandler(squire);
         this.farming = new FarmingHandler(squire);
         this.fishing = new FishingHandler(squire);
+        this.danger = new DangerHandler(squire);
         registerTransitions();
     }
 
@@ -85,6 +91,7 @@ public class SquireAI {
     public PatrolHandler getPatrol() { return patrol; }
     public FarmingHandler getFarming() { return farming; }
     public FishingHandler getFishing() { return fishing; }
+    public DangerHandler getDanger() { return danger; }
 
     /** Check if the state machine is currently in a specific state. */
     public boolean isInState(SquireAIState state) {
@@ -113,6 +120,7 @@ public class SquireAI {
 
     private void registerTransitions() {
         registerSittingTransitions();
+        registerDangerTransitions();
         registerCombatTransitions();
         registerEatingTransitions();
         registerMountTransitions();
@@ -155,6 +163,48 @@ public class SquireAI {
         ));
     }
 
+    // ---- Danger avoidance (global, priority 5) ----
+
+    private void registerDangerTransitions() {
+        // Enter FLEEING — flee from explosive threats (higher priority than combat)
+        machine.addTransition(new AITransition(
+                null,
+                () -> {
+                    if (!SquireConfig.enableDangerAvoidance.get()) return false;
+                    SquireAIState state = machine.getCurrentState();
+                    if (state == SquireAIState.FLEEING) return false;
+                    if (squire.isOrderedToSit()) return false;
+                    return danger.shouldFlee();
+                },
+                s -> {
+                    // Drop combat target when fleeing
+                    s.setTarget(null);
+                    danger.start();
+                    return SquireAIState.FLEEING;
+                },
+                1, 5
+        ));
+
+        // Tick FLEEING
+        machine.addTransition(new AITransition(
+                SquireAIState.FLEEING,
+                danger::hasThreat,
+                danger::tick,
+                1, 5
+        ));
+
+        // Exit FLEEING when threat gone
+        machine.addTransition(new AITransition(
+                SquireAIState.FLEEING,
+                () -> !danger.hasThreat(),
+                s -> {
+                    danger.stop();
+                    return SquireAIState.IDLE;
+                },
+                1, 4
+        ));
+    }
+
     // ---- Combat (global, priority 10) ----
 
     private void registerCombatTransitions() {
@@ -162,17 +212,22 @@ public class SquireAI {
         machine.addTransition(new AITransition(
                 null,
                 () -> {
+                    if (!SquireConfig.enableCombat.get()) return false;
                     SquireAIState state = machine.getCurrentState();
                     if (state == SquireAIState.COMBAT_APPROACH || state == SquireAIState.COMBAT_ATTACK
                             || state == SquireAIState.COMBAT_RANGED)
                         return false;
                     if (squire.isOrderedToSit()) return false;
-                    return combat.hasTarget();
+                    if (!combat.hasTarget()) return false;
+                    // Ranged requires higher tier than melee
+                    if (combat.shouldUseRanged()) return squire.getTier().canRanged();
+                    return squire.getTier().canFight();
                 },
                 s -> {
                     combat.start();
                     chat.onCombatStart();
                     if (combat.shouldUseRanged()) {
+                        SquireEquipmentHelper.switchToRangedLoadout(s);
                         return SquireAIState.COMBAT_RANGED;
                     }
                     return SquireAIState.COMBAT_APPROACH;
@@ -284,7 +339,7 @@ public class SquireAI {
 
         machine.addTransition(new AITransition(
                 SquireAIState.MINING_APPROACH,
-                mining::hasTarget,
+                () -> squire.getTier().canMine() && SquireConfig.enableMining.get() && mining.hasTarget(),
                 mining::tickApproach,
                 1, 35
         ));
@@ -302,7 +357,7 @@ public class SquireAI {
 
         machine.addTransition(new AITransition(
                 SquireAIState.MINING_BREAK,
-                mining::hasTarget,
+                () -> squire.getTier().canMine() && SquireConfig.enableMining.get() && mining.hasTarget(),
                 mining::tickBreak,
                 1, 35
         ));
@@ -325,7 +380,7 @@ public class SquireAI {
 
         machine.addTransition(new AITransition(
                 SquireAIState.PLACING_APPROACH,
-                placing::hasTarget,
+                () -> squire.getTier().canMine() && SquireConfig.enableMining.get() && placing.hasTarget(),
                 placing::tickApproach,
                 1, 36
         ));
@@ -343,7 +398,7 @@ public class SquireAI {
 
         machine.addTransition(new AITransition(
                 SquireAIState.PLACING_BLOCK,
-                placing::hasTarget,
+                () -> squire.getTier().canMine() && SquireConfig.enableMining.get() && placing.hasTarget(),
                 placing::tickPlace,
                 1, 36
         ));
@@ -356,6 +411,20 @@ public class SquireAI {
                 SquireAIState.IDLE,
                 () -> {
                     if (squire.isOrderedToSit()) return false;
+                    if (squire.getTarget() != null) return false;
+                    return items.findClosestItem();
+                },
+                s -> {
+                    items.start();
+                    return SquireAIState.PICKING_UP_ITEM;
+                },
+                40, 40
+        ));
+
+        // Also pick up items while following owner (not only when idle)
+        machine.addTransition(new AITransition(
+                SquireAIState.FOLLOWING_OWNER,
+                () -> {
                     if (squire.getTarget() != null) return false;
                     return items.findClosestItem();
                 },
@@ -390,7 +459,7 @@ public class SquireAI {
         // Auto-mount: if squire has an assigned horse nearby and is idle
         machine.addTransition(new AITransition(
                 SquireAIState.IDLE,
-                mount::shouldAutoMount,
+                () -> squire.getTier().canMount() && SquireConfig.enableMounting.get() && mount.shouldAutoMount(),
                 s -> {
                     mount.startApproach();
                     return SquireAIState.MOUNTING;
@@ -434,6 +503,7 @@ public class SquireAI {
         machine.addTransition(new AITransition(
                 null,
                 () -> {
+                    if (!squire.getTier().canMountedCombat() || !SquireConfig.enableMounting.get()) return false;
                     SquireAIState state = machine.getCurrentState();
                     if (state == SquireAIState.MOUNTED_COMBAT) return false;
                     if (!mount.isMounted()) return false;
@@ -487,7 +557,7 @@ public class SquireAI {
 
         machine.addTransition(new AITransition(
                 SquireAIState.CHEST_APPROACH,
-                chest::hasTarget,
+                () -> squire.getTier().canChestInteract() && SquireConfig.enableChestInteraction.get() && chest.hasTarget(),
                 chest::tickApproach,
                 1, 37
         ));
@@ -504,7 +574,7 @@ public class SquireAI {
 
         machine.addTransition(new AITransition(
                 SquireAIState.CHEST_INTERACT,
-                chest::hasTarget,
+                () -> squire.getTier().canChestInteract() && SquireConfig.enableChestInteraction.get() && chest.hasTarget(),
                 chest::tickInteract,
                 1, 37
         ));
@@ -525,7 +595,7 @@ public class SquireAI {
 
         machine.addTransition(new AITransition(
                 SquireAIState.PATROL_WALK,
-                patrol::isPatrolling,
+                () -> SquireTier.canPatrolAtLevel(squire.getSquireLevel()) && SquireConfig.enablePatrol.get() && patrol.isPatrolling(),
                 patrol::tickWalk,
                 1, 32
         ));
@@ -542,7 +612,7 @@ public class SquireAI {
 
         machine.addTransition(new AITransition(
                 SquireAIState.PATROL_WAIT,
-                patrol::isPatrolling,
+                () -> SquireTier.canPatrolAtLevel(squire.getSquireLevel()) && SquireConfig.enablePatrol.get() && patrol.isPatrolling(),
                 patrol::tickWait,
                 1, 32
         ));
@@ -551,7 +621,7 @@ public class SquireAI {
         // If squire lands in IDLE but patrol flag is still active, re-enter patrol.
         machine.addTransition(new AITransition(
                 SquireAIState.IDLE,
-                patrol::isPatrolling,
+                () -> SquireTier.canPatrolAtLevel(squire.getSquireLevel()) && SquireConfig.enablePatrol.get() && patrol.isPatrolling(),
                 s -> SquireAIState.PATROL_WALK,
                 1, 32
         ));
@@ -573,7 +643,7 @@ public class SquireAI {
 
         machine.addTransition(new AITransition(
                 SquireAIState.FARM_SCAN,
-                farming::isFarming,
+                () -> SquireConfig.enableFarming.get() && farming.isFarming(),
                 farming::tickScan,
                 1, 38
         ));
@@ -588,7 +658,7 @@ public class SquireAI {
 
         machine.addTransition(new AITransition(
                 SquireAIState.FARM_APPROACH,
-                farming::hasTarget,
+                () -> SquireConfig.enableFarming.get() && farming.hasTarget(),
                 farming::tickApproach,
                 1, 38
         ));
@@ -603,7 +673,7 @@ public class SquireAI {
 
         machine.addTransition(new AITransition(
                 SquireAIState.FARM_WORK,
-                farming::hasTarget,
+                () -> SquireConfig.enableFarming.get() && farming.hasTarget(),
                 farming::tickWork,
                 1, 38
         ));
@@ -611,7 +681,7 @@ public class SquireAI {
         // Resume farming after interruption (combat, eating, etc.)
         machine.addTransition(new AITransition(
                 SquireAIState.IDLE,
-                farming::isFarming,
+                () -> SquireConfig.enableFarming.get() && farming.isFarming(),
                 s -> SquireAIState.FARM_SCAN,
                 1, 38
         ));
@@ -633,7 +703,7 @@ public class SquireAI {
 
         machine.addTransition(new AITransition(
                 SquireAIState.FISHING_APPROACH,
-                fishing::isFishing,
+                () -> SquireConfig.enableFishing.get() && fishing.isFishing(),
                 fishing::tickApproach,
                 1, 39
         ));
@@ -651,7 +721,7 @@ public class SquireAI {
 
         machine.addTransition(new AITransition(
                 SquireAIState.FISHING_IDLE,
-                fishing::isFishing,
+                () -> SquireConfig.enableFishing.get() && fishing.isFishing(),
                 fishing::tickIdle,
                 1, 39
         ));
@@ -659,7 +729,7 @@ public class SquireAI {
         // Resume fishing after interruption
         machine.addTransition(new AITransition(
                 SquireAIState.IDLE,
-                fishing::isFishing,
+                () -> SquireConfig.enableFishing.get() && fishing.isFishing(),
                 s -> SquireAIState.FISHING_APPROACH,
                 1, 39
         ));

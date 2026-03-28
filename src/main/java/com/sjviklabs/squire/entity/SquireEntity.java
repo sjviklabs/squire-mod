@@ -178,6 +178,12 @@ public class SquireEntity extends TamableAnimal implements RangedAttackMob {
         this.entityData.set(SQUIRE_LEVEL, level);
     }
 
+    /** Current progression tier based on level. */
+    public SquireTier getTier() {
+        if (SquireConfig.classicMode.get()) return SquireTier.CHAMPION; // Everything unlocked
+        return SquireTier.forLevel(getSquireLevel());
+    }
+
     /** Whether this squire uses the slim (Alex/female) arm model. */
     public boolean isSlimModel() {
         return this.entityData.get(SLIM_MODEL);
@@ -530,6 +536,14 @@ public class SquireEntity extends TamableAnimal implements RangedAttackMob {
                 }
             }
             this.squireAI.tick();
+
+            // Tier 0: clear proactive aggro targets (keep reactive defense)
+            if (!this.getTier().canFight() && this.getTarget() != null) {
+                // Only keep target if we were directly hurt by it
+                if (this.getLastHurtByMob() != this.getTarget()) {
+                    this.setTarget(null);
+                }
+            }
 
             // Chunk loading: keep squire's chunk loaded during area clear if owner is online
             SquireChunkLoader.tick(this);
