@@ -1,6 +1,7 @@
 package com.sjviklabs.squire.ai.handler;
 
 import com.sjviklabs.squire.config.SquireConfig;
+import com.sjviklabs.squire.entity.SquireDataAttachment;
 import com.sjviklabs.squire.entity.SquireEntity;
 import com.sjviklabs.squire.util.SquireAbilities;
 import com.sjviklabs.squire.util.SquireAdvancements;
@@ -42,6 +43,14 @@ public class ProgressionHandler {
 
     public int getTotalXP() { return totalXP; }
     public int getCurrentLevel() { return currentLevel; }
+
+    /** Restore progression from player attachment data (used on resummon). */
+    public void setFromAttachment(int xp, int level) {
+        this.totalXP = xp;
+        this.currentLevel = level;
+        applyModifiers();
+        squire.setSquireLevel(level);
+    }
 
     /** Add XP from a kill. */
     public void addKillXP() {
@@ -87,6 +96,13 @@ public class ProgressionHandler {
         // Grant level milestone advancements to owner
         if (squire.getOwner() instanceof net.minecraft.server.level.ServerPlayer owner) {
             SquireAdvancements.grantLevel(owner, currentLevel);
+        }
+
+        // Sync to player attachment
+        if (squire.getOwner() instanceof net.minecraft.server.level.ServerPlayer owner) {
+            var data = owner.getData(SquireDataAttachment.SQUIRE_DATA.get());
+            owner.setData(SquireDataAttachment.SQUIRE_DATA.get(),
+                    data.withXP(totalXP, currentLevel));
         }
 
         // Chat line

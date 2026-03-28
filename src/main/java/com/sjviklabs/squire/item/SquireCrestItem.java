@@ -3,6 +3,7 @@ package com.sjviklabs.squire.item;
 import com.sjviklabs.squire.command.SquireCommand;
 import com.sjviklabs.squire.config.SquireConfig;
 import com.sjviklabs.squire.util.SquireAdvancements;
+import com.sjviklabs.squire.entity.SquireDataAttachment;
 import com.sjviklabs.squire.entity.SquireEntity;
 import com.sjviklabs.squire.init.ModEntities;
 import net.minecraft.core.BlockPos;
@@ -93,15 +94,30 @@ public class SquireCrestItem extends Item {
 
         squire.moveTo(pos.getX() + 0.5, pos.getY(), pos.getZ() + 0.5, serverPlayer.getYRot(), 0);
         squire.tame(serverPlayer);
-        squire.setCustomName(Component.literal("Squire"));
+
+        // Read player attachment — restore progression if resummon
+        var data = serverPlayer.getData(SquireDataAttachment.SQUIRE_DATA.get());
+        if (data.level() > 0) {
+            // Resummon: restore progression from attachment
+            squire.getProgression().setFromAttachment(data.totalXP(), data.level());
+            if (!data.customName().equals("Squire")) {
+                squire.setCustomName(Component.literal(data.customName()));
+            }
+            squire.setSlimModel(data.slimModel());
+        } else {
+            squire.setCustomName(Component.literal("Squire"));
+        }
+
         serverLevel.addFreshEntity(squire);
+
+        // Update attachment with new squire UUID
+        serverPlayer.setData(SquireDataAttachment.SQUIRE_DATA.get(),
+                data.withSquireUUID(squire.getUUID()));
 
         serverLevel.sendParticles(ParticleTypes.HAPPY_VILLAGER,
                 pos.getX() + 0.5, pos.getY() + 1.0, pos.getZ() + 0.5,
                 10, 0.5, 0.5, 0.5, 0.02);
         level.playSound(null, pos, SoundEvents.PLAYER_LEVELUP, SoundSource.PLAYERS, 0.5F, 1.2F);
-
-        context.getItemInHand().shrink(1);
 
         // Grant advancement
         SquireAdvancements.grantSummon(serverPlayer);

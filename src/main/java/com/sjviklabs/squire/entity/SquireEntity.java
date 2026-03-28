@@ -5,7 +5,6 @@ import com.sjviklabs.squire.ai.handler.ProgressionHandler;
 import com.sjviklabs.squire.ai.statemachine.SquireAI;
 import com.sjviklabs.squire.ai.statemachine.SquireAIState;
 import com.sjviklabs.squire.config.SquireConfig;
-import com.sjviklabs.squire.init.ModItems;
 import com.sjviklabs.squire.util.SquireAbilities;
 import com.sjviklabs.squire.util.SquireChunkLoader;
 import com.sjviklabs.squire.util.SquireEquipmentHelper;
@@ -369,14 +368,30 @@ public class SquireEntity extends TamableAnimal implements RangedAttackMob {
             // Drop all inventory contents
             this.inventory.dropAll(this.level(), this.blockPosition());
 
-            // Drop a squire crest so the player can resummon
-            this.spawnAtLocation(new ItemStack(ModItems.SQUIRE_CREST.get()));
-
             // Release any force-loaded chunks
             SquireChunkLoader.release(this);
 
-            // Notify owner with death coordinates
+            // Persist progression to player attachment (survives death)
             if (this.getOwner() instanceof ServerPlayer owner) {
+                var data = owner.getData(SquireDataAttachment.SQUIRE_DATA.get());
+                int xp = this.progression.getTotalXP();
+                int level = this.progression.getCurrentLevel();
+
+                // Apply death XP penalty if enabled
+                if (SquireConfig.deathXPPenalty.get()) {
+                    int levelXP = SquireAbilities.xpForLevel(level,
+                            SquireConfig.xpPerLevel.get());
+                    int penalty = (int) (levelXP * SquireConfig.deathXPPenaltyPercent.get());
+                    xp = Math.max(0, xp - penalty);
+                    level = SquireAbilities.calculateLevel(xp,
+                            SquireConfig.xpPerLevel.get(), SquireConfig.maxLevel.get());
+                }
+
+                String name = this.hasCustomName() ? this.getCustomName().getString() : "Squire";
+                owner.setData(SquireDataAttachment.SQUIRE_DATA.get(),
+                        data.withXP(xp, level).withName(name).withAppearance(this.isSlimModel()).clearSquireUUID());
+
+                // Notify owner with death coordinates
                 int x = this.blockPosition().getX();
                 int y = this.blockPosition().getY();
                 int z = this.blockPosition().getZ();
