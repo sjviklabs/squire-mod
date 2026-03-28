@@ -1,0 +1,9 @@
+{
+  "replace": false,
+  "values": [
+    "squire:squire_badge",
+    "squire:squire_guidebook",
+    "#squire:squire_equipment",
+    "squire:signpost"
+  ]
+}

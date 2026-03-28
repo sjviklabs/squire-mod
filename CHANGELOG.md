@@ -34,6 +34,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Previously uncommitted Phase 5 code (farming, fishing, task queue, danger handler) now committed and build-verified
 
+## [0.4.0] - 2026-03-25
+
+### Added
+- **Squire's Crest** — replaces Badge as summoning item; persists after use, includes area selection (shift+use)
+- **Squire's Guidebook** — in-game reference for commands and progression
+- **Visual progression** — tiered armor textures (Recruit/Veteran/Champion/Legend) based on squire level
+- **Radial command menu** — R key opens 8-wedge wheel (Follow, Guard, Patrol, Stay, Store, Fetch, Mount, Inventory)
+- **Farming handler** — `/squire farm <from> <to>` for till, plant, harvest loop
+- **Fishing handler** — `/squire fish` for simulated idle fishing with loot rolls
+- **Task queue** — `/squire queue add/list/clear` for chaining commands
+- **MineColonies soft integration** — raid defense, warehouse access, colonist protection
+- **Mod compatibility framework** — Waystones teleport detection, Farmer's Delight knife support, Jade/WTHIT overlay
+- **Safety rails** — stuck detection, drowning protection, swim boost, fall/void rescue
+
+### Changed
+- Lance merged into Crest (lance item removed)
+- Halberd sweep attack designed (code staged, item not yet registered)
+- Bow combat improvements (shield stow, draw pose, weapon swap fixes)
+
+## [0.3.0] - 2026-03-18
+
+### Added
+- **Signpost patrol system** — craftable signpost blocks form waypoint chains for patrol routes
+- **Mounted combat** — MountHandler finds saddled horses, persists horse UUID, mounted movement and combat
+- **Squire's Shield** — custom shield item, functionally identical to vanilla
+- **Squire's Armor set** — 4-piece set (helmet, chestplate, leggings, boots), 18 defense, 1.5 toughness
+- **Torch handler** — auto-places torches in dark areas (ability-gated)
+- **Chat handler** — contextual flavor text for combat, kills, mining, eating, idle
+- **Item handler** — pickup nearby items, junk filtering, auto-store when full
+- **Chest handler** — store/fetch items from nearby containers
+
+### Changed
+- Entity dimensions to full Steve size (1.8h × 0.6w)
+- Armor renders via HumanoidArmorLayer
+
 ## [0.2.0] - 2026-03-20
 
 ### Added

@@ -1,0 +1,10 @@
+{
+  "replace": false,
+  "values": [
+    "squire:squire_shield",
+    "squire:squire_helmet",
+    "squire:squire_chestplate",
+    "squire:squire_leggings",
+    "squire:squire_boots"
+  ]
+}
