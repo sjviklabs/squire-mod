@@ -88,6 +88,12 @@ public final class SquireConfig {
     public static final ModConfigSpec.IntValue patrolDefaultWait;
     public static final ModConfigSpec.IntValue patrolMaxRouteLength;
 
+    // --- Combat tactics ---
+    public static final ModConfigSpec.IntValue shieldBlockDuration;
+    public static final ModConfigSpec.IntValue circleStrafeDuration;
+    public static final ModConfigSpec.IntValue hitAndRunRetreatTicks;
+    public static final ModConfigSpec.DoubleValue evasiveDodgeInterval;
+
     // --- Ranged combat ---
     public static final ModConfigSpec.DoubleValue rangedOptimalRange;
     public static final ModConfigSpec.IntValue rangedCooldownTicks;
@@ -347,6 +353,22 @@ public final class SquireConfig {
         torchCooldownTicks = builder
                 .comment("Minimum ticks between torch placements (prevents spam). 60 = 3 seconds.")
                 .defineInRange("cooldownTicks", 60, 20, 200);
+        builder.pop();
+
+        // ---- Combat tactics ----
+        builder.push("combatTactics");
+        shieldBlockDuration = builder
+                .comment("Ticks to hold shield up after reactive block trigger (AGGRESSIVE/DEFAULT).")
+                .defineInRange("shieldBlockDuration", 10, 5, 40);
+        circleStrafeDuration = builder
+                .comment("Base ticks for circle-strafe movement after landing a hit (AGGRESSIVE).")
+                .defineInRange("circleStrafeDuration", 12, 5, 30);
+        hitAndRunRetreatTicks = builder
+                .comment("Ticks spent retreating during hit-and-run (EVASIVE/EXPLOSIVE).")
+                .defineInRange("hitAndRunRetreatTicks", 40, 10, 100);
+        evasiveDodgeInterval = builder
+                .comment("Ticks between evasive sidestep dodges (EVASIVE).")
+                .defineInRange("evasiveDodgeInterval", 40.0, 10.0, 100.0);
         builder.pop();
 
         // ---- Ranged combat ----

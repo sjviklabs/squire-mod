@@ -225,7 +225,7 @@ public class SquireAI {
                 },
                 s -> {
                     combat.start();
-                    chat.onCombatStart();
+                    // Tactic-specific chat fires from combat.start()
                     if (combat.shouldUseRanged()) {
                         SquireEquipmentHelper.switchToRangedLoadout(s);
                         return SquireAIState.COMBAT_RANGED;
@@ -511,7 +511,7 @@ public class SquireAI {
                 },
                 s -> {
                     combat.start();
-                    chat.onCombatStart();
+                    // Tactic-specific chat fires from combat.start()
                     return SquireAIState.MOUNTED_COMBAT;
                 },
                 1, 10

@@ -65,6 +65,22 @@ public class ChatHandler {
         say(TORCH);
     }
 
+    /** Say a translatable chat line (bypasses pool, respects cooldown). */
+    public void sayTranslatable(String translationKey) {
+        if (!SquireConfig.chatLinesEnabled.get()) return;
+        if (cooldown > 0) return;
+
+        if (squire.getOwner() instanceof net.minecraft.server.level.ServerPlayer owner) {
+            String name = squire.hasCustomName()
+                    ? squire.getCustomName().getString()
+                    : "Squire";
+            owner.sendSystemMessage(
+                    Component.literal("<" + name + "> ")
+                            .append(Component.translatable(translationKey)));
+            cooldown = GLOBAL_COOLDOWN;
+        }
+    }
+
     // ---- Internal ----
 
     private void say(String[] pool) {

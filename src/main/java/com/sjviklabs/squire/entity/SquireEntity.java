@@ -430,6 +430,11 @@ public class SquireEntity extends TamableAnimal implements RangedAttackMob {
 
         boolean wasHurt = super.hurt(source, amount);
 
+        // Notify CombatHandler for reactive shield blocking
+        if (wasHurt && this.squireAI != null) {
+            this.squireAI.getCombat().onDamageTaken();
+        }
+
         // Thorns: reflect 20% melee damage back to attacker (level-gated)
         if (wasHurt && SquireAbilities.hasThorns(this)
                 && source.getEntity() instanceof LivingEntity attacker
@@ -620,20 +625,7 @@ public class SquireEntity extends TamableAnimal implements RangedAttackMob {
                 }
             }
 
-            // Shield blocking (level-gated) — raise shield when targeted by ranged mob
-            if (SquireAbilities.hasShieldBlock(this)
-                    && SquireEquipmentHelper.isShield(this.getOffhandItem())) {
-                LivingEntity target = this.getTarget();
-                boolean shouldBlock = target != null && target.isAlive()
-                        && target instanceof net.minecraft.world.entity.monster.RangedAttackMob
-                        && this.distanceToSqr(target) > 16.0; // >4 blocks away
-                if (shouldBlock && !this.isUsingItem()) {
-                    this.startUsingItem(InteractionHand.OFF_HAND);
-                } else if (!shouldBlock && this.isUsingItem()
-                        && this.getUsedItemHand() == InteractionHand.OFF_HAND) {
-                    this.stopUsingItem();
-                }
-            }
+            // Shield blocking is now handled by CombatHandler's tactic-driven updateShield()
 
             // Tick undying cooldown
             if (this.undyingCooldown > 0) {
