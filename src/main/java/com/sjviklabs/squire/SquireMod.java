@@ -1,6 +1,7 @@
 package com.sjviklabs.squire;
 
 import com.sjviklabs.squire.compat.ModCompat;
+import com.sjviklabs.squire.entity.SquireDataAttachment;
 import com.sjviklabs.squire.config.SquireConfig;
 import com.sjviklabs.squire.init.ModBlockEntities;
 import com.sjviklabs.squire.init.ModBlocks;
@@ -37,6 +38,7 @@ public class SquireMod {
         ModItems.ITEMS.register(modEventBus);
         ModItems.CREATIVE_MODE_TABS.register(modEventBus);
         ModMenuTypes.MENUS.register(modEventBus);
+        SquireDataAttachment.ATTACHMENTS.register(modEventBus);
 
         // Register network payloads
         modEventBus.addListener(SquireModePayload::register);
