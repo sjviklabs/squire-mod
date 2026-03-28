@@ -250,6 +250,42 @@ public final class SquireEquipmentHelper {
             }
         }
 
+        // --- Craft a wooden pickaxe if squire has no pickaxe ---
+        if (!hasToolType(inv, Items.WOODEN_PICKAXE, Items.STONE_PICKAXE, Items.IRON_PICKAXE, Items.DIAMOND_PICKAXE, Items.NETHERITE_PICKAXE)) {
+            if (countPlanks(inv) >= 3 && countItem(inv, Items.STICK) >= 2) {
+                consumePlanks(inv, 3);
+                consumeItem(inv, Items.STICK, 2);
+                inv.addItem(new ItemStack(Items.WOODEN_PICKAXE));
+                squire.playSound(SoundEvents.VILLAGER_WORK_TOOLSMITH, 0.8F, 1.0F);
+                var log = squire.getActivityLog();
+                if (log != null) log.log("CRAFT", "Crafted a wooden pickaxe");
+            }
+        }
+
+        // --- Craft a wooden axe if squire has no axe ---
+        if (!hasToolType(inv, Items.WOODEN_AXE, Items.STONE_AXE, Items.IRON_AXE, Items.DIAMOND_AXE, Items.NETHERITE_AXE)) {
+            if (countPlanks(inv) >= 3 && countItem(inv, Items.STICK) >= 2) {
+                consumePlanks(inv, 3);
+                consumeItem(inv, Items.STICK, 2);
+                inv.addItem(new ItemStack(Items.WOODEN_AXE));
+                squire.playSound(SoundEvents.VILLAGER_WORK_TOOLSMITH, 0.8F, 1.0F);
+                var log = squire.getActivityLog();
+                if (log != null) log.log("CRAFT", "Crafted a wooden axe");
+            }
+        }
+
+        // --- Craft a wooden hoe if squire has no hoe (needed for farming) ---
+        if (!hasToolType(inv, Items.WOODEN_HOE, Items.STONE_HOE, Items.IRON_HOE, Items.DIAMOND_HOE, Items.NETHERITE_HOE)) {
+            if (countPlanks(inv) >= 2 && countItem(inv, Items.STICK) >= 2) {
+                consumePlanks(inv, 2);
+                consumeItem(inv, Items.STICK, 2);
+                inv.addItem(new ItemStack(Items.WOODEN_HOE));
+                squire.playSound(SoundEvents.VILLAGER_WORK_TOOLSMITH, 0.8F, 1.0F);
+                var log = squire.getActivityLog();
+                if (log != null) log.log("CRAFT", "Crafted a wooden hoe");
+            }
+        }
+
         // --- Craft a shield if squire has no shield ---
         if (!hasShieldAnywhere(squire, inv)) {
             int planksNeeded = 6;
@@ -292,6 +328,17 @@ public final class SquireEquipmentHelper {
 
         for (int i = 0; i < inv.getContainerSize(); i++) {
             if (isShield(inv.getItem(i))) return true;
+        }
+        return false;
+    }
+
+    /** Check if squire has any variant of a tool type equipped or in inventory. */
+    private static boolean hasToolType(SquireInventory inv, net.minecraft.world.item.Item... variants) {
+        for (int i = 0; i < inv.getContainerSize(); i++) {
+            var item = inv.getItem(i).getItem();
+            for (var variant : variants) {
+                if (item == variant) return true;
+            }
         }
         return false;
     }

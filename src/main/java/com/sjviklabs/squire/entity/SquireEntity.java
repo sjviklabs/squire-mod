@@ -639,6 +639,7 @@ public class SquireEntity extends TamableAnimal implements RangedAttackMob {
                 // selected tool mid-break, which causes the wrong item to render in hand.
                 if (!isInWorkState()) {
                     SquireEquipmentHelper.runFullEquipCheck(this);
+                    SquireEquipmentHelper.tryCraftBasicGear(this);
                 }
             }
         }

@@ -66,5 +66,14 @@
   "squire.milestone.5": "Your squire has become an Apprentice!",
   "squire.milestone.10": "Your squire has become a Squire!",
   "squire.milestone.20": "Your squire has become a Knight!",
-  "squire.milestone.30": "Your squire has achieved Champion rank!"
+  "squire.milestone.30": "Your squire has achieved Champion rank!",
+  "squire.radial.title": "Squire Commands",
+  "squire.radial.follow": "Follow",
+  "squire.radial.guard": "Guard",
+  "squire.radial.stay": "Stay",
+  "squire.radial.patrol": "Patrol",
+  "squire.radial.store": "Store",
+  "squire.radial.fetch": "Fetch",
+  "squire.radial.mount": "Mount",
+  "squire.radial.inventory": "Inventory"
 }

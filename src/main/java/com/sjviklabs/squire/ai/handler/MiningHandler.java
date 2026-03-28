@@ -47,6 +47,7 @@ public class MiningHandler {
     private double lastApproachDistSq;  // distance last time we checked for progress
     private int stuckTicks;             // ticks with no progress toward target
     private static final int STUCK_TIMEOUT = 100;  // 5 seconds with no progress = stuck
+    private static final int MAX_APPROACH_TICKS = 200;  // 10 seconds absolute max to reach target
 
     public MiningHandler(SquireEntity squire) {
         this.squire = squire;
@@ -186,7 +187,7 @@ public class MiningHandler {
             stuckTicks++;
         }
 
-        if (stuckTicks >= STUCK_TIMEOUT) {
+        if (stuckTicks >= STUCK_TIMEOUT || approachTicks >= MAX_APPROACH_TICKS) {
             var log = s.getActivityLog();
             if (log != null) {
                 log.log("MINE", "Can't reach block at " + targetPos.toShortString() + ", skipping");
