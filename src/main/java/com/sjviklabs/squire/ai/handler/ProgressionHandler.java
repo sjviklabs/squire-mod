@@ -137,13 +137,9 @@ public class ProgressionHandler {
         // Heal to new max on level up
         squire.setHealth(squire.getMaxHealth());
 
-        // Grant level milestone advancements to owner
+        // Grant advancement + sync to player attachment
         if (squire.getOwner() instanceof net.minecraft.server.level.ServerPlayer owner) {
             SquireAdvancements.grantLevel(owner, currentLevel);
-        }
-
-        // Sync to player attachment
-        if (squire.getOwner() instanceof net.minecraft.server.level.ServerPlayer owner) {
             var data = owner.getData(SquireDataAttachment.SQUIRE_DATA.get());
             owner.setData(SquireDataAttachment.SQUIRE_DATA.get(),
                     data.withXP(totalXP, currentLevel));

@@ -51,32 +51,34 @@ public enum SquireTier {
 
     // ---- Feature gates ----
 
+    private boolean isAtLeast(SquireTier tier) { return this.ordinal() >= tier.ordinal(); }
+
     /** Melee combat. Servant only swings defensively. */
-    public boolean canFight() { return this.ordinal() >= APPRENTICE.ordinal(); }
+    public boolean canFight() { return isAtLeast(APPRENTICE); }
 
     /** Mining and block breaking. */
-    public boolean canMine() { return this.ordinal() >= APPRENTICE.ordinal(); }
+    public boolean canMine() { return isAtLeast(APPRENTICE); }
 
     /** Ranged combat (bows). */
-    public boolean canRanged() { return this.ordinal() >= SQUIRE.ordinal(); }
+    public boolean canRanged() { return isAtLeast(SQUIRE); }
 
     /** Area clear. */
-    public boolean canAreaClear() { return this.ordinal() >= SQUIRE.ordinal(); }
+    public boolean canAreaClear() { return isAtLeast(SQUIRE); }
 
     /** Chest deposit/fetch. */
-    public boolean canChestInteract() { return this.ordinal() >= SQUIRE.ordinal(); }
+    public boolean canChestInteract() { return isAtLeast(SQUIRE); }
 
     /** Task queue. */
-    public boolean canUseQueue() { return this.ordinal() >= SQUIRE.ordinal(); }
+    public boolean canUseQueue() { return isAtLeast(SQUIRE); }
 
     /** Mounted movement (riding horses). */
-    public boolean canMount() { return this.ordinal() >= KNIGHT.ordinal(); }
+    public boolean canMount() { return isAtLeast(KNIGHT); }
 
     /** Mounted combat (lance charge). Tier 4 exclusive. */
     public boolean canMountedCombat() { return this == CHAMPION; }
 
     /** Halberd sweep. */
-    public boolean canSweep() { return this.ordinal() >= KNIGHT.ordinal(); }
+    public boolean canSweep() { return isAtLeast(KNIGHT); }
 
     /** Farming — available from level 1. Core servant work. */
     public boolean canFarm() { return true; }

@@ -24,7 +24,6 @@ public class ItemHandler {
 
     private final SquireEntity squire;
     private ItemEntity targetItem;
-    private boolean inventoryFullNotified;
     private int fullNotifyCooldown;
 
     private static final double PICKUP_DIST_SQ = 4.0D;
@@ -72,8 +71,6 @@ public class ItemHandler {
             }
             return false;
         }
-        inventoryFullNotified = false;
-
         double range = SquireConfig.itemPickupRange.get();
         AABB box = squire.getBoundingBox().inflate(range);
 
