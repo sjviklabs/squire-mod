@@ -201,6 +201,14 @@ public final class SquireEquipmentHelper {
 
         SquireInventory inv = squire.getSquireInventory();
 
+        // --- Craft sticks from planks if needed and no sticks available ---
+        if (countItem(inv, Items.STICK) == 0 && countPlanks(inv) >= 2) {
+            consumePlanks(inv, 2);
+            inv.addItem(new ItemStack(Items.STICK, 4));
+            var log = squire.getActivityLog();
+            if (log != null) log.log("CRAFT", "Crafted 4 sticks from planks");
+        }
+
         // --- Craft a wooden sword if squire has no melee weapon ---
         if (!hasMeleeWeapon(squire, inv)) {
             int planksNeeded = 2;
@@ -283,6 +291,18 @@ public final class SquireEquipmentHelper {
                 squire.playSound(SoundEvents.VILLAGER_WORK_TOOLSMITH, 0.8F, 1.0F);
                 var log = squire.getActivityLog();
                 if (log != null) log.log("CRAFT", "Crafted a wooden hoe");
+            }
+        }
+
+        // --- Craft a fishing rod if squire has no fishing rod ---
+        if (!hasToolType(inv, Items.FISHING_ROD)) {
+            if (countItem(inv, Items.STICK) >= 3 && countItem(inv, Items.STRING) >= 2) {
+                consumeItem(inv, Items.STICK, 3);
+                consumeItem(inv, Items.STRING, 2);
+                inv.addItem(new ItemStack(Items.FISHING_ROD));
+                squire.playSound(SoundEvents.VILLAGER_WORK_FISHERMAN, 0.8F, 1.0F);
+                var log = squire.getActivityLog();
+                if (log != null) log.log("CRAFT", "Crafted a fishing rod");
             }
         }
 

@@ -647,6 +647,11 @@ public class SquireEntity extends TamableAnimal implements RangedAttackMob {
                 this.addEffect(new MobEffectInstance(MobEffects.REGENERATION, 100, 0, false, false));
             }
 
+            // Passive item pickup — grab items at feet during any state (every 10 ticks)
+            if (this.tickCount % 10 == 0) {
+                passivePickup();
+            }
+
             if (++this.equipCheckTimer >= SquireConfig.equipCheckInterval.get()) {
                 this.equipCheckTimer = 0;
                 // Skip equip check while mining/placing — prevents weapon overwriting the
@@ -671,6 +676,40 @@ public class SquireEntity extends TamableAnimal implements RangedAttackMob {
                 || state == SquireAIState.FARM_APPROACH || state == SquireAIState.FARM_WORK
                 || state == SquireAIState.FARM_SCAN
                 || state == SquireAIState.FISHING_APPROACH || state == SquireAIState.FISHING_IDLE;
+    }
+
+    /**
+     * Passive item magnet — pulls items within 3 blocks into inventory without
+     * changing AI state. Runs during mining, farming, fishing, combat, or any state.
+     * Does not chase items — only grabs what's already at the squire's feet.
+     */
+    private void passivePickup() {
+        if (this.inventory.isFull()) return;
+
+        double magnetRange = 3.0;
+        var items = this.level().getEntitiesOfClass(
+                net.minecraft.world.entity.item.ItemEntity.class,
+                this.getBoundingBox().inflate(magnetRange),
+                item -> item.isAlive() && !item.hasPickUpDelay()
+        );
+
+        for (var item : items) {
+            if (this.distanceToSqr(item) > magnetRange * magnetRange) continue;
+
+            ItemStack stack = item.getItem().copy();
+            ItemStack remainder = this.inventory.addItem(stack);
+
+            if (remainder.isEmpty()) {
+                item.discard();
+            } else {
+                item.setItem(remainder);
+            }
+
+            // Auto-equip if it's better gear (only when not in work state)
+            if (!isInWorkState()) {
+                SquireEquipmentHelper.tryAutoEquip(this, stack);
+            }
+        }
     }
 
     /** Accessor for debug/admin commands. Null before first server-side aiStep(). */

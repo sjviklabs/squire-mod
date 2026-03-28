@@ -29,13 +29,11 @@ public class ItemHandler {
     private static final double PICKUP_DIST_SQ = 4.0D;
     private static final int FULL_NOTIFY_COOLDOWN_TICKS = 1200; // 60 seconds between alerts
 
-    /** Items not worth picking up — junk that clutters inventory and distracts from following. */
+    /** Items not worth actively chasing — junk that clutters inventory and distracts from following.
+     *  Note: passive magnet pickup (SquireEntity.passivePickup) ignores this list and grabs everything at feet. */
     private static final Set<Item> IGNORED_ITEMS = Set.of(
-            Items.WHEAT_SEEDS, Items.BEETROOT_SEEDS, Items.MELON_SEEDS, Items.PUMPKIN_SEEDS,
             Items.POISONOUS_POTATO, Items.DEAD_BUSH, Items.FERN, Items.SHORT_GRASS,
             Items.KELP, Items.SEAGRASS, Items.LILY_PAD, Items.VINE,
-            Items.ROTTEN_FLESH, Items.SPIDER_EYE,
-            Items.DIRT, Items.COBBLESTONE, Items.GRAVEL, Items.SAND,
             Items.SNOWBALL, Items.ICE
     );
 
