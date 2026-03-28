@@ -295,6 +295,11 @@ public class MiningHandler {
             // Award mining XP
             s.getProgression().addMineXP();
 
+            // Bonus: wood chopping gets chop XP in addition to mine XP
+            if (state.is(net.minecraft.tags.BlockTags.LOGS)) {
+                s.getProgression().addChopXP();
+            }
+
             var log = s.getActivityLog();
             if (log != null) {
                 log.log("MINE", "Broke " + blockName + " at " + posStr);

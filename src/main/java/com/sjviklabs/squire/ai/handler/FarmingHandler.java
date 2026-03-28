@@ -257,6 +257,7 @@ public class FarmingHandler {
 
         // Break the crop — drops items naturally
         level.destroyBlock(pos, true, s);
+        s.getProgression().addHarvestXP();
         return true;
     }
 

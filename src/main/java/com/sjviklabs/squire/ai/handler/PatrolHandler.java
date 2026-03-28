@@ -125,7 +125,12 @@ public class PatrolHandler {
             }
 
             // Advance to next waypoint (loop)
-            currentIndex = (currentIndex + 1) % route.size();
+            int nextIndex = (currentIndex + 1) % route.size();
+            if (nextIndex == 0) {
+                // Completed a full loop — award XP
+                squire.getProgression().addPatrolLoopXP();
+            }
+            currentIndex = nextIndex;
             return SquireAIState.PATROL_WALK;
         }
 

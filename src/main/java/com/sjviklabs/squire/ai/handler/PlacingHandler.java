@@ -142,6 +142,8 @@ public class PlacingHandler {
             log.log("PLACE", "Placed " + block.getName().getString() + " at " + targetPos.toShortString());
         }
 
+        s.getProgression().addPlaceXP();
+
         clearTarget();
         return SquireAIState.IDLE;
     }

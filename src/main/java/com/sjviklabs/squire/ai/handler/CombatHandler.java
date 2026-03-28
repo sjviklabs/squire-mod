@@ -161,8 +161,16 @@ public class CombatHandler {
         if (distSq > maxRange * maxRange) {
             s.getNavigation().moveTo(target, 1.0D);
         } else if (distSq < (optimalRange - 3.0) * (optimalRange - 3.0)) {
-            // Too close to optimal — back up by stopping nav and letting mob AI handle it
-            s.getNavigation().stop();
+            // Too close — actively retreat away from target
+            double dx = s.getX() - target.getX();
+            double dz = s.getZ() - target.getZ();
+            double len = Math.sqrt(dx * dx + dz * dz);
+            if (len > 0.01) {
+                double retreatDist = 5.0;
+                double rx = s.getX() + (dx / len) * retreatDist;
+                double rz = s.getZ() + (dz / len) * retreatDist;
+                s.getNavigation().moveTo(rx, s.getY(), rz, 1.3D);
+            }
         } else {
             // In optimal range — stop and aim
             s.getNavigation().stop();

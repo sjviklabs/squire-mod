@@ -1,9 +1,12 @@
 package com.sjviklabs.squire.ai.handler;
 
+import com.sjviklabs.squire.ai.handler.ChestHandler;
 import com.sjviklabs.squire.ai.statemachine.SquireAIState;
 import com.sjviklabs.squire.config.SquireConfig;
 import com.sjviklabs.squire.entity.SquireEntity;
+import com.sjviklabs.squire.util.SquireAbilities;
 import com.sjviklabs.squire.util.SquireEquipmentHelper;
+import net.minecraft.network.chat.Component;
 import net.minecraft.tags.ItemTags;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
@@ -21,8 +24,11 @@ public class ItemHandler {
 
     private final SquireEntity squire;
     private ItemEntity targetItem;
+    private boolean inventoryFullNotified;
+    private int fullNotifyCooldown;
 
     private static final double PICKUP_DIST_SQ = 4.0D;
+    private static final int FULL_NOTIFY_COOLDOWN_TICKS = 1200; // 60 seconds between alerts
 
     /** Items not worth picking up — junk that clutters inventory and distracts from following. */
     private static final Set<Item> IGNORED_ITEMS = Set.of(
@@ -40,6 +46,9 @@ public class ItemHandler {
 
     /** Scan for nearby items the inventory can hold. Skips junk and won't wander from owner. */
     public boolean findClosestItem() {
+        // Tick down the notification cooldown
+        if (fullNotifyCooldown > 0) fullNotifyCooldown--;
+
         // Don't chase items if owner is far — follow takes priority
         Player owner = squire.getOwner() instanceof Player p ? p : null;
         if (owner != null) {
@@ -48,6 +57,22 @@ public class ItemHandler {
                 return false;
             }
         }
+
+        // Check if inventory is full — notify player and try auto-store
+        if (squire.getSquireInventory().isFull()) {
+            if (fullNotifyCooldown <= 0 && owner != null) {
+                owner.displayClientMessage(Component.translatable("squire.inventory.full"), false);
+                fullNotifyCooldown = FULL_NOTIFY_COOLDOWN_TICKS;
+
+                // Try auto-store if chest ability is unlocked
+                if (SquireAbilities.hasChestDeposit(squire) && squire.getSquireAI() != null) {
+                    var chest = squire.getSquireAI().getChest();
+                    chest.setTarget(null, ChestHandler.ChestAction.STORE, null);
+                }
+            }
+            return false;
+        }
+        inventoryFullNotified = false;
 
         double range = SquireConfig.itemPickupRange.get();
         AABB box = squire.getBoundingBox().inflate(range);

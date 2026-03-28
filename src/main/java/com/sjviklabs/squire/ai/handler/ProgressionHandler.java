@@ -6,6 +6,7 @@ import com.sjviklabs.squire.entity.SquireEntity;
 import com.sjviklabs.squire.util.SquireAbilities;
 import com.sjviklabs.squire.util.SquireAdvancements;
 import net.minecraft.core.Holder;
+import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvents;
@@ -66,6 +67,24 @@ public class ProgressionHandler {
         addXP(SquireConfig.xpPerBlock.get());
     }
 
+    /** Add XP from harvesting a mature crop. */
+    public void addHarvestXP() { addXP(SquireConfig.xpPerHarvest.get()); }
+
+    /** Add XP from catching a fish. */
+    public void addFishXP() { addXP(SquireConfig.xpPerFish.get()); }
+
+    /** Add XP when a patrol loop completes (squire cycles back to first waypoint). */
+    public void addPatrolLoopXP() { addXP(SquireConfig.xpPerPatrolLoop.get()); }
+
+    /** Add XP when a queued task completes. */
+    public void addQueuedTaskXP() { addXP(SquireConfig.xpPerQueuedTask.get()); }
+
+    /** Add XP from placing a block. */
+    public void addPlaceXP() { addXP(SquireConfig.xpPerPlace.get()); }
+
+    /** Add XP from chopping a log (awarded in addition to mine XP). */
+    public void addChopXP() { addXP(SquireConfig.xpPerChop.get()); }
+
     private void addXP(int amount) {
         int oldLevel = currentLevel;
         this.totalXP += amount;
@@ -83,10 +102,35 @@ public class ProgressionHandler {
         applyModifiers();
     }
 
+    /** Levels that trigger milestone celebrations. */
+    private static final java.util.Set<Integer> MILESTONE_LEVELS =
+            java.util.Set.of(5, 10, 20, 30);
+
     private void onLevelUp() {
         if (squire.level() instanceof ServerLevel serverLevel) {
-            serverLevel.playSound(null, squire.blockPosition(),
-                    SoundEvents.PLAYER_LEVELUP, SoundSource.NEUTRAL, 1.0F, 1.0F);
+            boolean milestone = MILESTONE_LEVELS.contains(currentLevel);
+            if (milestone) {
+                // Challenge-complete fanfare + totem burst
+                serverLevel.playSound(null, squire.blockPosition(),
+                        SoundEvents.UI_TOAST_CHALLENGE_COMPLETE, SoundSource.NEUTRAL, 1.0F, 1.0F);
+                double x = squire.getX();
+                double y = squire.getY() + 1.0;
+                double z = squire.getZ();
+                for (int i = 0; i < 50; i++) {
+                    double ox = (squire.getRandom().nextDouble() - 0.5) * 2.0;
+                    double oy = squire.getRandom().nextDouble() * 2.0;
+                    double oz = (squire.getRandom().nextDouble() - 0.5) * 2.0;
+                    serverLevel.sendParticles(ParticleTypes.TOTEM_OF_UNDYING,
+                            x, y, z, 1, ox, oy, oz, 0.1);
+                }
+            } else {
+                // Normal level-up ding + enchant sparkle
+                serverLevel.playSound(null, squire.blockPosition(),
+                        SoundEvents.PLAYER_LEVELUP, SoundSource.NEUTRAL, 1.0F, 1.0F);
+                serverLevel.sendParticles(ParticleTypes.ENCHANT,
+                        squire.getX(), squire.getY() + 1.0, squire.getZ(),
+                        20, 0.5, 0.5, 0.5, 0.1);
+            }
         }
         // Sync level to client
         squire.setSquireLevel(currentLevel);

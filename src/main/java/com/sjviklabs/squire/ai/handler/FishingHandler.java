@@ -143,6 +143,9 @@ public class FishingHandler {
         // Consume rod durability
         damageFishingRod(s);
 
+        // Award XP for the catch
+        s.getProgression().addFishXP();
+
         // Effects
         level.playSound(null, s.blockPosition(), SoundEvents.FISHING_BOBBER_SPLASH,
                 SoundSource.NEUTRAL, 0.5F, 1.0F);
