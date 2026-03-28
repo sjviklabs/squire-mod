@@ -470,6 +470,44 @@ public final class SquireEquipmentHelper {
     /**
      * @return true if the item is a melee weapon (SwordItem, AxeItem, or Farmer's Delight knife)
      */
+    /**
+     * Force-equip a bow from inventory into mainhand, stowing shield.
+     * Called when entering COMBAT_RANGED state.
+     * @return true if a bow was equipped
+     */
+    public static boolean switchToRangedLoadout(SquireEntity squire) {
+        SquireInventory inv = squire.getSquireInventory();
+        ItemStack currentMainhand = squire.getItemBySlot(EquipmentSlot.MAINHAND);
+
+        // Already holding a bow — just stow shield
+        if (currentMainhand.getItem() instanceof BowItem) {
+            stowShieldIfNeeded(squire, inv);
+            return true;
+        }
+
+        // Search inventory for a bow
+        for (int i = 0; i < inv.getContainerSize(); i++) {
+            ItemStack candidate = inv.getItem(i);
+            if (!candidate.isEmpty() && candidate.getItem() instanceof BowItem && !isCursed(candidate)) {
+                swapEquipmentFromSlot(squire, EquipmentSlot.MAINHAND, inv, i);
+                stowShieldIfNeeded(squire, inv);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Stow shield from offhand into inventory (bow needs both hands).
+     */
+    private static void stowShieldIfNeeded(SquireEntity squire, SquireInventory inv) {
+        ItemStack offhand = squire.getItemBySlot(EquipmentSlot.OFFHAND);
+        if (isShield(offhand)) {
+            squire.setItemSlot(EquipmentSlot.OFFHAND, ItemStack.EMPTY);
+            inv.addItem(offhand);
+        }
+    }
+
     public static boolean isMeleeWeapon(ItemStack stack) {
         if (stack.isEmpty()) return false;
         Item item = stack.getItem();

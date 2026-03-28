@@ -43,6 +43,7 @@ public record SquireCommandPayload(int commandId, int squireEntityId) implements
     public static final int CMD_FETCH = 5;
     public static final int CMD_MOUNT = 6;
     public static final int CMD_INVENTORY = 7;
+    public static final int CMD_COME = 8;
 
     public static final CustomPacketPayload.Type<SquireCommandPayload> TYPE =
             new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(SquireMod.MODID, "squire_command"));
@@ -169,6 +170,42 @@ public record SquireCommandPayload(int commandId, int squireEntityId) implements
                     buf.writeFloat(squire.getMaxHealth());
                     buf.writeByte(squire.getSquireMode());
                 });
+            }
+            case CMD_COME -> {
+                // Teleport squire to player's side
+                BlockPos playerPos = serverPlayer.blockPosition();
+                boolean teleported = false;
+                for (int attempt = 0; attempt < 10; attempt++) {
+                    int dx = net.minecraft.util.Mth.randomBetweenInclusive(squire.getRandom(), -3, 3);
+                    int dz = net.minecraft.util.Mth.randomBetweenInclusive(squire.getRandom(), -3, 3);
+                    if (Math.abs(dx) <= 1 && Math.abs(dz) <= 1) continue;
+
+                    BlockPos target = playerPos.offset(dx, 0, dz);
+                    for (int dy = -2; dy <= 2; dy++) {
+                        BlockPos check = target.offset(0, dy, 0);
+                        if (serverPlayer.serverLevel().getBlockState(check.below()).isSolid()
+                                && serverPlayer.serverLevel().getBlockState(check).isAir()
+                                && serverPlayer.serverLevel().getBlockState(check.above()).isAir()) {
+                            squire.moveTo(check.getX() + 0.5, check.getY(), check.getZ() + 0.5,
+                                    serverPlayer.getYRot(), 0);
+                            squire.getNavigation().stop();
+                            squire.setSquireMode(SquireEntity.MODE_FOLLOW);
+                            teleported = true;
+                            break;
+                        }
+                    }
+                    if (teleported) break;
+                }
+                if (teleported) {
+                    if (serverPlayer.serverLevel() instanceof ServerLevel sl) {
+                        sl.sendParticles(net.minecraft.core.particles.ParticleTypes.PORTAL,
+                                squire.getX(), squire.getY() + 1.0, squire.getZ(),
+                                20, 0.5, 0.5, 0.5, 0.1);
+                    }
+                    serverPlayer.displayClientMessage(Component.literal("Squire teleported to your side."), true);
+                } else {
+                    serverPlayer.displayClientMessage(Component.literal("No safe spot found."), true);
+                }
             }
             default -> { /* unknown command — ignore */ }
         }

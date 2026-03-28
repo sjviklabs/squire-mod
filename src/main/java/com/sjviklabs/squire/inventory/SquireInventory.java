@@ -115,6 +115,19 @@ public class SquireInventory extends SimpleContainer {
     // ------------------------------------------------------------------
 
     /**
+     * @return true if every inventory slot is occupied and at max stack size.
+     */
+    public boolean isFull() {
+        for (int i = 0; i < this.getContainerSize(); i++) {
+            ItemStack stack = this.getItem(i);
+            if (stack.isEmpty() || stack.getCount() < stack.getMaxStackSize()) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
      * Serialize to a {@link ListTag} where each compound carries a {@code Slot}
      * byte so empty slots in the middle are preserved on reload.
      */
