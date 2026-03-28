@@ -58,10 +58,11 @@ import java.util.UUID;
  *   <li>{@code /squire limit <count>}           — set max squires per player at runtime (op level 3)</li>
  *   <li>{@code /squire info}                    — show your squire's state, level, XP (no op)</li>
  *   <li>{@code /squire mine <pos>}              — order squire to mine block at position (op level 2)</li>
+ *   <li>{@code /squire mine <pos1> <pos2>}     — preview area clear with particle outline (op level 2)</li>
+ *   <li>{@code /squire mine confirm}           — execute the previewed area clear</li>
+ *   <li>{@code /squire mine stop}              — cancel preview or stop active clear</li>
  *   <li>{@code /squire place <pos> <block>}     — order squire to place block at position (op level 2)</li>
- *   <li>{@code /squire clear <from> <to>}       — preview area clear with particle outline (op level 2)</li>
- *   <li>{@code /squire clear confirm}           — execute the previewed area clear</li>
- *   <li>{@code /squire clear cancel}            — cancel preview or stop active clear</li>
+ *   <li>{@code /squire clear ...}              — legacy alias for /squire mine (backward compat)</li>
  *   <li>{@code /squire xp <amount>}             — grant XP to your squire (op level 2)</li>
  * </ul>
  */
@@ -485,9 +486,10 @@ public class SquireCommand {
     }
 
     // ------------------------------------------------------------------
-    // /squire clear <from> <to>  — preview with particle outline
-    // /squire clear confirm      — execute pending clear
-    // /squire clear cancel       — cancel preview or active clear
+    // /squire mine <pos1> <pos2> — preview with particle outline
+    // /squire mine confirm       — execute pending clear
+    // /squire mine stop          — cancel preview or active clear
+    // (/squire clear is a legacy alias for the above)
     // ------------------------------------------------------------------
 
     private static int previewClear(CommandSourceStack source, BlockPos from, BlockPos to) {
@@ -554,7 +556,7 @@ public class SquireCommand {
 
         player.displayClientMessage(Component.literal(
                 "Clear preview: " + dx + "x" + dy + "x" + dz + " (" + volume + " blocks). " +
-                "/squire clear confirm to start, cancel to abort."), false);
+                "/squire mine confirm to start, cancel to abort."), false);
         return volume;
     }
 
@@ -565,7 +567,7 @@ public class SquireCommand {
         }
         PendingClear pending = pendingClears.remove(player.getUUID());
         if (pending == null) {
-            source.sendFailure(Component.literal("No pending clear to confirm. Use /squire clear <from> <to> or the crest first."));
+            source.sendFailure(Component.literal("No pending area to confirm. Use /squire mine <pos1> <pos2> or the crest first."));
             return 0;
         }
         SquireEntity squire = findOwnedSquire(source, player);
@@ -1110,7 +1112,7 @@ public class SquireCommand {
                 ServerPlayer player = server.getPlayerList().getPlayer(entry.getKey());
                 if (player != null) {
                     player.sendSystemMessage(Component.literal(
-                            "Clear preview expired. Run /squire clear <from> <to> again to re-preview."));
+                            "Clear preview expired. Run /squire mine <pos1> <pos2> again to re-preview."));
                 }
                 it.remove();
                 continue;

@@ -143,6 +143,14 @@ public class SquireEntity extends TamableAnimal implements RangedAttackMob {
         this.entityData.set(SQUIRE_MODE, mode);
         // STAY = sit down, no combat. GUARD = stand, fight, but don't follow.
         this.setOrderedToSit(mode == MODE_STAY);
+
+        // Cancel active work behaviors so the squire obeys the mode change
+        if (this.squireAI != null) {
+            this.squireAI.getPatrol().stopPatrol();
+            this.squireAI.getMining().clearTarget();
+            this.squireAI.getFarming().stop();
+            this.squireAI.getFishing().stop();
+        }
     }
 
     /** Whether squire should follow owner (false for STAY and GUARD). */

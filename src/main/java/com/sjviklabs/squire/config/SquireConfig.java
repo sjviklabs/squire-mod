@@ -250,10 +250,10 @@ public final class SquireConfig {
                 .comment("Bonus mining speed per squire level. 0.0167 = +50% at Lv30. Set to 0 to disable.")
                 .defineInRange("miningSpeedPerLevel", 0.0167, 0.0, 0.1);
         maxClearVolume = builder
-                .comment("Maximum number of blocks allowed in a /squire clear command. Prevents accidental massive clears.")
+                .comment("Maximum number of blocks allowed in a /squire mine area command. Prevents accidental massive clears.")
                 .defineInRange("maxClearVolume", 32768, 1, 1000000);
         clearConfirmThreshold = builder
-                .comment("Area clears above this block count require /squire clear confirm. Below this, clearing starts immediately.")
+                .comment("Area clears above this block count require /squire mine confirm. Below this, clearing starts immediately.")
                 .defineInRange("clearConfirmThreshold", 500, 1, 100000);
         builder.pop();
 
