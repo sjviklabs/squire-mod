@@ -12,7 +12,9 @@
   "squire.mode.guard": "Guard",
 
   "item.squire.squire_badge": "Squire's Crest",
+  "item.squire.squire_badge.tooltip1": "Right-click ground to summon, air to recall",
   "item.squire.squire_guidebook": "Squire's Guidebook",
+  "item.squire.squire_guidebook.tooltip1": "Wisdom of Ser Aldric the Faithful",
   "item.squire.squire_shield": "Squire's Shield",
   "item.squire.squire_helmet": "Squire's Helmet",
   "item.squire.squire_chestplate": "Squire's Chestplate",
@@ -72,13 +74,6 @@
   "squire.milestone.20": "Your squire has become a Knight!",
   "squire.milestone.30": "Your squire has achieved Champion rank!",
 
-  "radial.squire.mode": "Mode",
-  "radial.squire.patrol": "Patrol",
-  "radial.squire.store": "Store",
-  "radial.squire.fetch": "Fetch",
-  "radial.squire.mount": "Mount",
-  "radial.squire.inventory": "Inventory",
-
   "squire.radial.title": "Squire Commands",
   "squire.radial.follow": "Follow",
   "squire.radial.guard": "Guard",
@@ -87,5 +82,12 @@
   "squire.radial.store": "Store",
   "squire.radial.fetch": "Fetch",
   "squire.radial.mount": "Mount",
-  "squire.radial.inventory": "Inventory"
+  "squire.radial.inventory": "Inventory",
+
+  "radial.squire.mode": "Mode",
+  "radial.squire.patrol": "Patrol",
+  "radial.squire.store": "Store",
+  "radial.squire.fetch": "Fetch",
+  "radial.squire.mount": "Mount",
+  "radial.squire.inventory": "Inventory"
 }
