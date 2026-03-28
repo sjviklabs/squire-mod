@@ -104,6 +104,12 @@ public final class SquireConfig {
     public static final ModConfigSpec.IntValue equipCheckInterval;
     public static final ModConfigSpec.IntValue pathRecalcInterval;
 
+    // --- Danger avoidance ---
+    public static final ModConfigSpec.DoubleValue dangerFleeRange;
+    public static final ModConfigSpec.DoubleValue dangerProactiveRange;
+    public static final ModConfigSpec.IntValue dangerFleeTicks;
+    public static final ModConfigSpec.IntValue dangerScanInterval;
+
     // --- Halberd sweep ---
     public static final ModConfigSpec.DoubleValue sweepDamageMultiplier;
     public static final ModConfigSpec.IntValue sweepCooldownTicks;
@@ -126,6 +132,34 @@ public final class SquireConfig {
 
     // --- Task queue ---
     public static final ModConfigSpec.IntValue maxQueueLength;
+
+    // --- Feature toggles ---
+    public static final ModConfigSpec.BooleanValue enableCombat;
+    public static final ModConfigSpec.BooleanValue enableMining;
+    public static final ModConfigSpec.BooleanValue enableProgression;
+    public static final ModConfigSpec.BooleanValue enablePersonality;
+    public static final ModConfigSpec.BooleanValue enableBackpack;
+    public static final ModConfigSpec.BooleanValue enableCustomArmor;
+    public static final ModConfigSpec.BooleanValue enableMounting;
+    public static final ModConfigSpec.BooleanValue enablePatrol;
+    public static final ModConfigSpec.BooleanValue enableChestInteraction;
+    public static final ModConfigSpec.BooleanValue enableFarming;
+    public static final ModConfigSpec.BooleanValue enableFishing;
+    public static final ModConfigSpec.BooleanValue enableTaskQueue;
+    public static final ModConfigSpec.BooleanValue enableDangerAvoidance;
+    public static final ModConfigSpec.BooleanValue classicMode;
+
+    // --- New XP sources ---
+    public static final ModConfigSpec.IntValue xpPerHarvest;
+    public static final ModConfigSpec.IntValue xpPerFish;
+    public static final ModConfigSpec.IntValue xpPerPatrolLoop;
+    public static final ModConfigSpec.IntValue xpPerQueuedTask;
+    public static final ModConfigSpec.IntValue xpPerPlace;
+    public static final ModConfigSpec.IntValue xpPerChop;
+
+    // --- Death penalty ---
+    public static final ModConfigSpec.BooleanValue deathXPPenalty;
+    public static final ModConfigSpec.DoubleValue deathXPPenaltyPercent;
 
     static {
         ModConfigSpec.Builder builder = new ModConfigSpec.Builder();
@@ -243,6 +277,24 @@ public final class SquireConfig {
         speedPerLevel = builder
                 .comment("Bonus movement speed per level.")
                 .defineInRange("speedPerLevel", 0.003, 0.0, 0.05);
+        xpPerHarvest = builder
+                .comment("XP gained per crop harvested.")
+                .defineInRange("xpPerHarvest", 2, 1, 50);
+        xpPerFish = builder
+                .comment("XP gained per fish caught.")
+                .defineInRange("xpPerFish", 3, 1, 50);
+        xpPerPatrolLoop = builder
+                .comment("XP gained per patrol loop completed.")
+                .defineInRange("xpPerPatrolLoop", 5, 1, 100);
+        xpPerQueuedTask = builder
+                .comment("XP gained per queued task completed.")
+                .defineInRange("xpPerQueuedTask", 2, 1, 50);
+        xpPerPlace = builder
+                .comment("XP gained per block placed.")
+                .defineInRange("xpPerPlace", 1, 1, 50);
+        xpPerChop = builder
+                .comment("XP gained per log block chopped.")
+                .defineInRange("xpPerChop", 1, 1, 50);
         builder.pop();
 
         // ---- Ability unlock levels ----
@@ -363,6 +415,22 @@ public final class SquireConfig {
                 .defineInRange("pathRecalcInterval", 10, 1, 40);
         builder.pop();
 
+        // ---- Danger avoidance ----
+        builder.push("danger");
+        dangerFleeRange = builder
+                .comment("Range in blocks to detect and flee from explosive threats.")
+                .defineInRange("dangerFleeRange", 10.0, 4.0, 20.0);
+        dangerProactiveRange = builder
+                .comment("Range in blocks to proactively flee from creepers targeting squire or owner.")
+                .defineInRange("dangerProactiveRange", 6.0, 3.0, 12.0);
+        dangerFleeTicks = builder
+                .comment("Ticks to spend fleeing from a detected threat.")
+                .defineInRange("dangerFleeTicks", 60, 20, 200);
+        dangerScanInterval = builder
+                .comment("Ticks between danger scans for nearby explosive mobs.")
+                .defineInRange("dangerScanInterval", 5, 1, 20);
+        builder.pop();
+
         // ---- Halberd sweep ----
         builder.push("halberd");
         sweepDamageMultiplier = builder
@@ -420,6 +488,62 @@ public final class SquireConfig {
         maxQueueLength = builder
                 .comment("Maximum number of tasks in the command queue.")
                 .defineInRange("maxQueueLength", 10, 1, 50);
+        builder.pop();
+
+        // ---- Feature toggles ----
+        builder.push("features");
+        enableCombat = builder
+                .comment("Enable combat behavior (melee + ranged). When false, squire flees all hostiles.")
+                .define("enableCombat", true);
+        enableMining = builder
+                .comment("Enable mining and area clear commands.")
+                .define("enableMining", true);
+        enableProgression = builder
+                .comment("Enable XP and leveling system.")
+                .define("enableProgression", true);
+        enablePersonality = builder
+                .comment("Enable chat lines, idle behaviors, and ambient sounds.")
+                .define("enablePersonality", true);
+        enableBackpack = builder
+                .comment("Enable tiered backpack system. When false, squire has fixed 9-slot inventory.")
+                .define("enableBackpack", true);
+        enableCustomArmor = builder
+                .comment("Enable custom squire armor set bonus.")
+                .define("enableCustomArmor", true);
+        enableMounting = builder
+                .comment("Enable horse mounting and mounted combat.")
+                .define("enableMounting", true);
+        enablePatrol = builder
+                .comment("Enable signpost patrol system.")
+                .define("enablePatrol", true);
+        enableChestInteraction = builder
+                .comment("Enable chest store/fetch commands.")
+                .define("enableChestInteraction", true);
+        enableFarming = builder
+                .comment("Enable farming handler (till/plant/harvest).")
+                .define("enableFarming", true);
+        enableFishing = builder
+                .comment("Enable fishing handler.")
+                .define("enableFishing", true);
+        enableTaskQueue = builder
+                .comment("Enable command queuing system.")
+                .define("enableTaskQueue", true);
+        enableDangerAvoidance = builder
+                .comment("Enable proactive danger avoidance (flee creepers).")
+                .define("enableDangerAvoidance", true);
+        classicMode = builder
+                .comment("Classic mode: all features unlocked at Lv1 (ignores tier progression). For players who prefer the pre-v0.5.0 behavior.")
+                .define("classicMode", false);
+        builder.pop();
+
+        // ---- Death penalty ----
+        builder.push("death");
+        deathXPPenalty = builder
+                .comment("When true, squire loses a percentage of current level XP on death.")
+                .define("deathXPPenalty", true);
+        deathXPPenaltyPercent = builder
+                .comment("Fraction of current level XP lost on death. 0.10 = 10%.")
+                .defineInRange("deathXPPenaltyPercent", 0.10, 0.0, 0.5);
         builder.pop();
 
         SPEC = builder.build();
