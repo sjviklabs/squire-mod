@@ -12,7 +12,7 @@ import com.sjviklabs.squire.config.SquireConfig;
 import com.sjviklabs.squire.entity.SquireEntity;
 import com.sjviklabs.squire.init.ModBlocks;
 import com.sjviklabs.squire.init.ModEntities;
-import com.sjviklabs.squire.item.SquireLanceItem;
+
 import com.sjviklabs.squire.util.SquireAbilities;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -32,6 +32,8 @@ import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.HitResult;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
@@ -98,6 +100,7 @@ public class SquireCommand {
                 )
                 .then(Commands.literal("mine")
                         .requires(src -> src.hasPermission(2))
+                        .executes(ctx -> mineTargeted(ctx.getSource()))
                         .then(Commands.argument("pos", BlockPosArgument.blockPos())
                                 .executes(ctx -> orderMine(ctx.getSource(), BlockPosArgument.getLoadedBlockPos(ctx, "pos")))
                         )
@@ -229,7 +232,59 @@ public class SquireCommand {
                                 )
                         )
                 )
+                .then(Commands.literal("come")
+                        .executes(ctx -> orderCome(ctx.getSource()))
+                )
         );
+    }
+
+    // ------------------------------------------------------------------
+    // /squire come
+    // ------------------------------------------------------------------
+
+    private static int orderCome(CommandSourceStack source) {
+        if (!(source.getEntity() instanceof ServerPlayer player)) return 0;
+        SquireEntity squire = findOwnedSquire(source, player);
+        if (squire == null) {
+            source.sendFailure(Component.translatable("squire.come.no_squire"));
+            return 0;
+        }
+
+        BlockPos playerPos = player.blockPosition();
+        boolean teleported = false;
+        for (int attempt = 0; attempt < 10; attempt++) {
+            int dx = net.minecraft.util.Mth.randomBetweenInclusive(squire.getRandom(), -3, 3);
+            int dz = net.minecraft.util.Mth.randomBetweenInclusive(squire.getRandom(), -3, 3);
+            if (Math.abs(dx) <= 1 && Math.abs(dz) <= 1) continue;
+
+            BlockPos target = playerPos.offset(dx, 0, dz);
+            for (int dy = -2; dy <= 2; dy++) {
+                BlockPos check = target.offset(0, dy, 0);
+                if (player.serverLevel().getBlockState(check.below()).isSolid()
+                        && player.serverLevel().getBlockState(check).isAir()
+                        && player.serverLevel().getBlockState(check.above()).isAir()) {
+                    squire.moveTo(check.getX() + 0.5, check.getY(), check.getZ() + 0.5,
+                            player.getYRot(), 0);
+                    squire.getNavigation().stop();
+                    squire.setSquireMode(SquireEntity.MODE_FOLLOW);
+                    teleported = true;
+                    break;
+                }
+            }
+            if (teleported) break;
+        }
+        if (teleported) {
+            if (player.serverLevel() instanceof ServerLevel sl) {
+                sl.sendParticles(ParticleTypes.PORTAL,
+                        squire.getX(), squire.getY() + 1.0, squire.getZ(),
+                        20, 0.5, 0.5, 0.5, 0.1);
+            }
+            source.sendSuccess(() -> Component.translatable("squire.come.teleport"), true);
+            return 1;
+        } else {
+            source.sendFailure(Component.literal("No safe spot found near you."));
+            return 0;
+        }
     }
 
     // ------------------------------------------------------------------
@@ -334,8 +389,29 @@ public class SquireCommand {
     }
 
     // ------------------------------------------------------------------
-    // /squire mine <pos>
+    // /squire mine  (crosshair-targeted) and  /squire mine <pos>
     // ------------------------------------------------------------------
+
+    /**
+     * /squire mine (no args) — mine the block the player is looking at.
+     * Uses player's eye position and look direction to raycast up to 6 blocks.
+     */
+    private static int mineTargeted(CommandSourceStack source) {
+        if (!(source.getEntity() instanceof ServerPlayer player)) {
+            source.sendFailure(Component.literal("Must be run by a player."));
+            return 0;
+        }
+
+        // Raycast from player's eyes in look direction, max 6 blocks (vanilla reach)
+        var hitResult = player.pick(6.0D, 0.0F, false);
+        if (hitResult.getType() != HitResult.Type.BLOCK) {
+            source.sendFailure(Component.literal("Look at a block to mine it."));
+            return 0;
+        }
+
+        var blockHit = (BlockHitResult) hitResult;
+        return orderMine(source, blockHit.getBlockPos());
+    }
 
     private static int orderMine(CommandSourceStack source, BlockPos pos) {
         if (!(source.getEntity() instanceof ServerPlayer player)) {
@@ -457,7 +533,6 @@ public class SquireCommand {
             source.sendFailure(Component.literal("No pending clear to confirm. Use /squire clear <from> <to> or the lance first."));
             return 0;
         }
-        SquireLanceItem.clearPositions(player.getUUID());
         SquireEntity squire = findOwnedSquire(source, player);
         if (squire == null) {
             source.sendFailure(Component.literal("You have no active squire."));
@@ -494,7 +569,6 @@ public class SquireCommand {
         }
 
         boolean hadPending = pendingClears.remove(player.getUUID()) != null;
-        SquireLanceItem.clearPositions(player.getUUID());
 
         // Also stop active area clear if running
         SquireEntity squire = findOwnedSquire(source, player);
